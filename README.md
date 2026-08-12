@@ -6,6 +6,8 @@ Yank Trove は、YouTube 向けのデスクトップアプリケーションで�
 
 **利用は自己責任です。** YouTube の利用規約や法令に反する使い方、過度な連続取得、ログイン状態での取得などにより、IP 制限、機能制限、アカウント停止などの不利益が生じても、開発者は責任を負いません。取得してよいコンテンツかどうか（著作権・メンバーシップ契約を含む）も、利用者自身で判断してください。
 
+**対応 OS:** 動作確認済みは **Windows** です。macOS 向けのビルド手順・設定は用意していますが、開発者が Mac を所持していないため **動作未確認** です。Linux（`.deb` 等）は未対応です。
+
 ---
 
 ## 主な機能
@@ -88,13 +90,14 @@ brew install deno
 
 うまくいかない場合は、PC を **再起動** してから、手順 5 をもう一度お試しください。
 
-#### macOS
+#### macOS（動作未確認）
 
 ```bash
 brew install ffmpeg
 ```
 
-インストール後、右上バッジが **「FFmpeg: 検出済み」** になることを確認してください。
+インストール後、右上バッジが **「FFmpeg: 検出済み」** になることを確認してください。  
+※ macOS は開発環境での動作確認ができていません。問題があれば Issue で報告してください。
 
 ---
 
@@ -177,10 +180,22 @@ npm run tauri build
 
 生成物出力先: `src-tauri/target/release/bundle/`
 
+### GitHub Actions によるリリース（Windows / macOS）
+
+`v*` タグを push すると、[Release workflow](./.github/workflows/release.yml) が Windows（NSIS / MSI）と macOS（Apple Silicon / Intel の `.dmg`）をビルドし、GitHub Release に添付します。
+
+```bash
+# バージョンを上げたうえで:
+git tag v0.4.1
+git push origin v0.4.1
+```
+
+手動実行は Actions タブの **Release** → **Run workflow** からも可能です。macOS 成果物は動作未確認です。
+
 ### 同梱バイナリ（開発者向け）
 
 `yt-dlp` と Deno の実行ファイルは Git に含めていません（GitHub のファイルサイズ制限のため）。  
-配置方法は [src-tauri/binaries/README.md](./src-tauri/binaries/README.md) を参照してください。
+配置方法は [src-tauri/binaries/README.md](./src-tauri/binaries/README.md) を参照してください。CI では `.github/scripts/download-sidecars.sh` が自動取得します。
 
 ---
 
