@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+
+# Frontend build
+dist/
+
+# Rust / Tauri build
+src-tauri/target/
+src-tauri/gen/
+
+# Sidecar binaries (exceed GitHub file size limits; see src-tauri/binaries/README.md)
+src-tauri/binaries/*
+!src-tauri/binaries/README.md
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Logs and debug
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Editors
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Installer / local packages
+*.msi
+*.dmg
+*.app
+*.exe
