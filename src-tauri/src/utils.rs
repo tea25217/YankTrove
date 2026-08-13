@@ -309,3 +309,63 @@ pub fn cleanup_incomplete_files(dir: &Path, video_id: &str) -> std::io::Result<(
     }
     Ok(())
 }
+
+pub struct CsvVideoRow {
+    pub id: String,
+    pub title: String,
+    pub url: String,
+    pub uploaded_at: String,
+    pub duration: String,
+    pub availability: String,
+    pub save_path: String,
+}
+
+pub fn format_duration_seconds(duration: Option<f64>) -> String {
+    let Some(total) = duration.filter(|value| *value >= 0.0) else {
+        return String::new();
+    };
+    let total = total.round() as u64;
+    let hours = total / 3600;
+    let minutes = (total % 3600) / 60;
+    let seconds = total % 60;
+    if hours > 0 {
+        format!("{hours}:{minutes:02}:{seconds:02}")
+    } else {
+        format!("{minutes}:{seconds:02}")
+    }
+}
+
+fn csv_field(value: &str) -> String {
+    if value.contains([',', '"', '\n', '\r']) {
+        format!("\"{}\"", value.replace('"', "\"\""))
+    } else {
+        value.to_string()
+    }
+}
+
+/// Writes a UTF-8 (BOM) CSV summary for Excel-friendly reading.
+pub fn write_channel_summary_csv(
+    path: &Path,
+    rows: &[CsvVideoRow],
+    locale: crate::i18n::UiLocale,
+) -> std::io::Result<()> {
+    let header = crate::i18n::csv_header(locale);
+    let mut body = String::from("\u{FEFF}");
+    body.push_str(&header.map(csv_field).join(","));
+    body.push_str("\r\n");
+    for row in rows {
+        let line = [
+            csv_field(&row.id),
+            csv_field(&row.title),
+            csv_field(&row.url),
+            csv_field(&row.uploaded_at),
+            csv_field(&row.duration),
+            csv_field(&row.availability),
+            csv_field(&row.save_path),
+        ]
+        .join(",");
+        body.push_str(&line);
+        body.push_str("\r\n");
+    }
+    fs::write(path, body)
+}

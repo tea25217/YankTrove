@@ -8,7 +8,7 @@ mod i18n;
 
 use crate::utils::{
     is_ffmpeg_installed, detect_js_runtime, cleanup_incomplete_files, sanitize_folder_name,
-    video_folder_name,
+    video_folder_name, CsvVideoRow, format_duration_seconds, write_channel_summary_csv,
 };
 use crate::i18n::UiLocale;
 use crate::command_runner::{
@@ -73,6 +73,7 @@ async fn start_download_archive(
         .map_err(|e| format!("Failed to create directory {:?}: {}", channel_dir, e))?;
 
     let total_count = videos.len();
+    let mut csv_rows: Vec<CsvVideoRow> = Vec::new();
 
     for (index, video) in videos.iter().enumerate() {
         if state.is_cancelled.load(Ordering::SeqCst) {
@@ -82,6 +83,22 @@ async fn start_download_archive(
         let video_dir = channel_dir.join(video_folder_name(&video.title, &video.id));
         std::fs::create_dir_all(&video_dir)
             .map_err(|e| format!("Failed to create directory {:?}: {}", video_dir, e))?;
+
+        if options.csv {
+            csv_rows.push(CsvVideoRow {
+                id: video.id.clone(),
+                title: video.title.clone(),
+                url: video.url.clone(),
+                uploaded_at: video.uploaded_at.clone().unwrap_or_default(),
+                duration: format_duration_seconds(video.duration),
+                availability: video
+                    .availability
+                    .as_deref()
+                    .map(|value| crate::i18n::csv_availability_label(value, ui_locale))
+                    .unwrap_or_default(),
+                save_path: video_dir.to_string_lossy().into_owned(),
+            });
+        }
 
         // Notify UI that video processing has started
         let _ = app.emit("video-started", video.id.clone());
@@ -137,6 +154,35 @@ async fn start_download_archive(
                 log: Some(crate::i18n::waiting_before_next(delay_seconds, ui_locale)),
             });
             tokio::time::sleep(tokio::time::Duration::from_secs(delay_seconds)).await;
+        }
+    }
+
+    if options.csv && !state.is_cancelled.load(Ordering::SeqCst) {
+        let csv_path = channel_dir.join("summary.csv");
+        match write_channel_summary_csv(&csv_path, &csv_rows, ui_locale) {
+            Ok(()) => {
+                let _ = app.emit("download-log", ProgressPayload {
+                    video_id: "".to_string(),
+                    percentage: 0.0,
+                    speed: None,
+                    eta: None,
+                    status: "Finished".to_string(),
+                    log: Some(crate::i18n::csv_written_log(
+                        &csv_path.to_string_lossy(),
+                        ui_locale,
+                    )),
+                });
+            }
+            Err(error) => {
+                let _ = app.emit("download-log", ProgressPayload {
+                    video_id: "".to_string(),
+                    percentage: 0.0,
+                    speed: None,
+                    eta: None,
+                    status: "Error".to_string(),
+                    log: Some(crate::i18n::csv_write_failed_log(&error.to_string(), ui_locale)),
+                });
+            }
         }
     }
 

@@ -48,6 +48,12 @@ pub struct VideoDownloadTarget {
     pub url: String,
     #[serde(default)]
     pub title: String,
+    #[serde(default)]
+    pub duration: Option<f64>,
+    #[serde(default)]
+    pub uploaded_at: Option<String>,
+    #[serde(default)]
+    pub availability: Option<String>,
 }
 
 #[derive(serde::Deserialize, Clone, Debug)]
@@ -61,6 +67,8 @@ pub struct DownloadOptions {
     pub audio: bool,
     pub audio_format: String, // "mp3" or "m4a"
     pub cookies_browser: String, // "chrome", "firefox", "edge", "safari", "none"
+    #[serde(default)]
+    pub csv: bool,
 }
 
 #[derive(serde::Serialize, Clone, Debug)]
@@ -69,6 +77,8 @@ pub struct VideoInfo {
     pub title: String,
     pub url: String,
     pub duration: Option<f64>,
+    pub uploaded_at: Option<String>,
+    pub availability: Option<String>,
 }
 
 #[derive(serde::Serialize, Clone, Debug)]
@@ -169,6 +179,43 @@ fn tab_label_from_entry(entry: &serde_json::Value) -> Option<&'static str> {
     }
 }
 
+fn parse_uploaded_at(entry: &serde_json::Value) -> Option<String> {
+    if let Some(date) = entry["upload_date"].as_str() {
+        if date.len() == 8 && date.chars().all(|c| c.is_ascii_digit()) {
+            return Some(format!("{}-{}-{}", &date[0..4], &date[4..6], &date[6..8]));
+        }
+        if !date.is_empty() {
+            return Some(date.to_string());
+        }
+    }
+
+    let timestamp = entry["timestamp"]
+        .as_f64()
+        .or_else(|| entry["release_timestamp"].as_f64())
+        .map(|value| value as i64)?;
+    Some(timestamp.to_string())
+}
+
+fn parse_availability(entry: &serde_json::Value) -> Option<String> {
+    let availability = entry["availability"]
+        .as_str()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(str::to_string);
+    let live_status = entry["live_status"]
+        .as_str()
+        .map(str::trim)
+        .filter(|value| !value.is_empty() && *value != "not_live")
+        .map(str::to_string);
+
+    match (availability, live_status) {
+        (Some(availability), Some(live_status)) => Some(format!("{availability}/{live_status}")),
+        (Some(availability), None) => Some(availability),
+        (None, Some(live_status)) => Some(live_status),
+        (None, None) => None,
+    }
+}
+
 fn parse_video_entries(entries: &[serde_json::Value], title_prefix: Option<&str>) -> Vec<VideoInfo> {
     let mut videos = Vec::new();
 
@@ -192,12 +239,16 @@ fn parse_video_entries(entries: &[serde_json::Value], title_prefix: Option<&str>
             _ => raw_title,
         };
         let duration = entry["duration"].as_f64();
+        let uploaded_at = parse_uploaded_at(entry);
+        let availability = parse_availability(entry);
 
         videos.push(VideoInfo {
             id,
             title,
             url: page_url,
             duration,
+            uploaded_at,
+            availability,
         });
     }
 

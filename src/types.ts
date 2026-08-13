@@ -2,6 +2,9 @@ export interface VideoDownloadTarget {
   id: string;
   url: string;
   title: string;
+  duration: number | null;
+  uploaded_at: string | null;
+  availability: string | null;
 }
 
 export interface DownloadOptions {
@@ -14,6 +17,7 @@ export interface DownloadOptions {
   audio: boolean;
   audio_format: string;
   cookies_browser: string;
+  csv: boolean;
 }
 
 export interface VideoInfo {
@@ -21,6 +25,8 @@ export interface VideoInfo {
   title: string;
   url: string;
   duration: number | null;
+  uploaded_at: string | null;
+  availability: string | null;
 }
 
 export interface ChannelInfo {

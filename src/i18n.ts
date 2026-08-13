@@ -21,6 +21,7 @@ const ja = {
   optThumbnail: 'サムネイル画像 (JPG)',
   optVideo: '動画本体 (MP4)',
   optAudio: '音声のみ抽出 (MP3)',
+  optCsv: '整形データ (CSV)',
   ffmpegWarning:
     '⚠️ 動画の保存、または音声の抽出には <strong>FFmpeg</strong> が必要です。未検出の場合は処理が失敗するか画質が制限される場合があります。',
   audioFormat: '形式:',
@@ -109,6 +110,7 @@ const en: { [K in keyof typeof ja]: string } = {
   optThumbnail: 'Thumbnail (JPG)',
   optVideo: 'Video (MP4)',
   optAudio: 'Audio only (MP3)',
+  optCsv: 'Summary spreadsheet (CSV)',
   ffmpegWarning:
     '⚠️ Saving video or extracting audio requires <strong>FFmpeg</strong>. Without it, the job may fail or quality may be limited.',
   audioFormat: 'Format:',

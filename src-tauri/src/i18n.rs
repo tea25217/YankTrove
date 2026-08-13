@@ -148,3 +148,52 @@ pub fn video_failed_log(video_id: &str, error: &str, locale: UiLocale) -> String
         format!("[ERROR] Video ID {video_id} failed: {error}")
     }
 }
+
+pub fn csv_header(locale: UiLocale) -> [&'static str; 7] {
+    if locale.is_ja() {
+        ["動画ID", "タイトル", "URL", "配信日時", "長さ", "公開状態", "保存パス"]
+    } else {
+        ["video_id", "title", "url", "uploaded_at", "duration", "availability", "save_path"]
+    }
+}
+
+pub fn csv_availability_label(raw: &str, locale: UiLocale) -> String {
+    let key = raw.split('/').next().unwrap_or(raw).trim();
+    let mapped = match key {
+        "public" => if locale.is_ja() { "公開" } else { "Public" },
+        "unlisted" => if locale.is_ja() { "限定公開" } else { "Unlisted" },
+        "private" => if locale.is_ja() { "非公開" } else { "Private" },
+        "subscriber_only" | "premium_only" => {
+            if locale.is_ja() { "メンバー限定" } else { "Members only" }
+        }
+        "needs_auth" => if locale.is_ja() { "要ログイン" } else { "Login required" },
+        "" => "",
+        _ => key,
+    };
+
+    if mapped.is_empty() {
+        raw.to_string()
+    } else if raw.contains('/') {
+        format!("{mapped} ({raw})")
+    } else if mapped == key {
+        raw.to_string()
+    } else {
+        mapped.to_string()
+    }
+}
+
+pub fn csv_written_log(path: &str, locale: UiLocale) -> String {
+    if locale.is_ja() {
+        format!("サマリ CSV を保存しました: {}", path)
+    } else {
+        format!("Saved summary CSV: {path}")
+    }
+}
+
+pub fn csv_write_failed_log(error: &str, locale: UiLocale) -> String {
+    if locale.is_ja() {
+        format!("サマリ CSV の保存に失敗しました: {}", error)
+    } else {
+        format!("Failed to save summary CSV: {error}")
+    }
+}

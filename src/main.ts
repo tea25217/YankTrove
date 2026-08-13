@@ -79,6 +79,9 @@ document.addEventListener('DOMContentLoaded', async () => {
           <label class="checkbox-option">
             <input type="checkbox" id="opt-audio" /> ${t('optAudio')}
           </label>
+          <label class="checkbox-option">
+            <input type="checkbox" id="opt-csv" /> ${t('optCsv')}
+          </label>
           <div id="ffmpeg-warning" class="warning-box">
             ${t('ffmpegWarning')}
           </div>
@@ -425,6 +428,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       thumbnail: (document.getElementById('opt-thumbnail') as HTMLInputElement).checked,
       video: (document.getElementById('opt-video') as HTMLInputElement).checked,
       audio: (document.getElementById('opt-audio') as HTMLInputElement).checked,
+      csv: (document.getElementById('opt-csv') as HTMLInputElement).checked,
       audio_format: audioFormatSelect.value,
       cookies_browser: cookiesBrowserSelect.value,
     };
@@ -453,7 +457,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
       await invoke('start_download_archive', {
         options,
-        videos: selectedVideos.map(video => ({ id: video.id, url: video.url, title: video.title })),
+        videos: selectedVideos.map(video => ({
+          id: video.id,
+          url: video.url,
+          title: video.title,
+          duration: video.duration,
+          uploaded_at: video.uploaded_at,
+          availability: video.availability,
+        })),
         channelTitle: currentChannelTitle,
         delaySeconds,
         customDir: selectedDir,
