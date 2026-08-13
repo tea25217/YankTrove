@@ -192,14 +192,21 @@ npm run tauri build
 
 生成物出力先: `src-tauri/target/release/bundle/`
 
+### バージョン番号
+
+当面は `0.x` のままです（1.0 には上げません）。破壊的変更もメジャーではなくマイナーを上げます。
+
+- **マイナー**（`0.x.0`）: 機能追加、および破壊的変更
+- **パッチ**（`0.0.x`）: 些細な変更
+
 ### GitHub Actions によるリリース（Windows / macOS）
 
 `v*` タグを push すると、[Release workflow](./.github/workflows/release.yml) が Windows（NSIS / MSI）と macOS（Apple Silicon / Intel の `.dmg`）をビルドし、GitHub Release に添付します。
 
 ```bash
 # バージョンを上げたうえで:
-git tag v0.5.2
-git push origin v0.5.2
+git tag v0.6.0
+git push origin v0.6.0
 ```
 
 手動実行は Actions タブの **Release** → **Run workflow** からも可能です。macOS 成果物は動作未確認です。
