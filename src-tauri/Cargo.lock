@@ -4598,6 +4598,7 @@ name = "yank-trove"
 version = "0.5.1"
 dependencies = [
  "anyhow",
+ "encoding_rs",
  "regex",
  "serde",
  "serde_json",

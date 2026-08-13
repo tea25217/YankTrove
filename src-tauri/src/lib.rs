@@ -5,6 +5,7 @@ use tauri::{Emitter, Manager};
 mod utils;
 mod command_runner;
 mod i18n;
+mod text_decode;
 
 use crate::utils::{
     is_ffmpeg_installed, detect_js_runtime, cleanup_incomplete_files, sanitize_folder_name,
@@ -209,6 +210,46 @@ async fn cancel_downloads(state: tauri::State<'_, AppState>) -> Result<(), Strin
     Ok(())
 }
 
+#[tauri::command]
+fn open_save_folder(app: tauri::AppHandle, custom_dir: Option<String>) -> Result<(), String> {
+    let dir = match custom_dir.filter(|path| !path.trim().is_empty()) {
+        Some(path) => PathBuf::from(path),
+        None => app
+            .path()
+            .download_dir()
+            .map_err(|e| e.to_string())?
+            .join("YankTrove"),
+    };
+
+    std::fs::create_dir_all(&dir)
+        .map_err(|e| format!("Failed to create directory {:?}: {}", dir, e))?;
+
+    open_path_in_file_manager(&dir)
+}
+
+fn open_path_in_file_manager(dir: &std::path::Path) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    let mut command = {
+        let mut command = std::process::Command::new("explorer");
+        command.arg(dir);
+        command
+    };
+    #[cfg(target_os = "macos")]
+    let mut command = {
+        let mut command = std::process::Command::new("open");
+        command.arg(dir);
+        command
+    };
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+    let mut command = {
+        let mut command = std::process::Command::new("xdg-open");
+        command.arg(dir);
+        command
+    };
+
+    command.spawn().map(|_| ()).map_err(|e| e.to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -220,7 +261,8 @@ pub fn run() {
             check_environment,
             get_channel_videos,
             start_download_archive,
-            cancel_downloads
+            cancel_downloads,
+            open_save_folder
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

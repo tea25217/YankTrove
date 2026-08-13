@@ -6,6 +6,7 @@ use tauri::Emitter;
 use tauri_plugin_shell::process::{CommandChild, CommandEvent};
 
 use crate::utils::{spawn_yt_dlp, is_js_challenge_error};
+use crate::text_decode::StreamDecoder;
 use crate::i18n::{
     UiLocale, channel_not_found_error, cookie_extraction_error_message, js_runtime_setup_message,
     video_list_unavailable, ytdlp_fetch_error,
@@ -276,6 +277,7 @@ async fn run_flat_playlist_json(
     let (mut rx, _child) = spawn_yt_dlp(app, args)?;
     let mut json_buffer = Vec::new();
     let mut stderr_messages = Vec::new();
+    let mut stderr_decoder = StreamDecoder::new();
 
     while let Some(event) = rx.recv().await {
         match event {
@@ -283,9 +285,11 @@ async fn run_flat_playlist_json(
                 json_buffer.extend_from_slice(&bytes);
             }
             CommandEvent::Stderr(bytes) => {
-                let err_msg = String::from_utf8_lossy(&bytes);
-                eprintln!("yt-dlp flat-playlist stderr: {}", err_msg);
-                stderr_messages.push(err_msg.trim().to_string());
+                let err_msg = stderr_decoder.push(&bytes);
+                if !err_msg.is_empty() {
+                    eprintln!("yt-dlp flat-playlist stderr: {}", err_msg);
+                    stderr_messages.push(err_msg.trim().to_string());
+                }
             }
             CommandEvent::Terminated(status) => {
                 let terminated_with_error = !status.code.map(|c| c == 0).unwrap_or(false);
@@ -307,6 +311,11 @@ async fn run_flat_playlist_json(
             }
             _ => {}
         }
+    }
+
+    let leftover = stderr_decoder.finish();
+    if !leftover.trim().is_empty() {
+        stderr_messages.push(leftover.trim().to_string());
     }
 
     let json_str_trimmed = String::from_utf8_lossy(&json_buffer);
@@ -551,6 +560,8 @@ pub async fn download_single_video(
     let mut js_challenge_failed = false;
     let mut last_err_msg = String::new();
     let mut stderr_messages = Vec::new();
+    let mut stdout_decoder = StreamDecoder::new();
+    let mut stderr_decoder = StreamDecoder::new();
 
     while let Some(event) = rx.recv().await {
         // Check cancellation
@@ -560,7 +571,7 @@ pub async fn download_single_video(
 
         match event {
             CommandEvent::Stdout(bytes) => {
-                let line = String::from_utf8_lossy(&bytes);
+                let line = stdout_decoder.push(&bytes);
                 let trimmed = line.trim();
                 if trimmed.is_empty() {
                     continue;
@@ -589,7 +600,7 @@ pub async fn download_single_video(
                 }
             }
             CommandEvent::Stderr(bytes) => {
-                let line = String::from_utf8_lossy(&bytes);
+                let line = stderr_decoder.push(&bytes);
                 let trimmed = line.trim();
                 if !trimmed.is_empty() {
                     last_err_msg = trimmed.to_string();
@@ -611,6 +622,23 @@ pub async fn download_single_video(
                 }
             }
             CommandEvent::Terminated(status) => {
+                let leftover_out = stdout_decoder.finish();
+                if !leftover_out.trim().is_empty() {
+                    let _ = app.emit("download-log", ProgressPayload {
+                        video_id: video_id.to_string(),
+                        percentage: 0.0,
+                        speed: None,
+                        eta: None,
+                        status: "Downloading".to_string(),
+                        log: Some(leftover_out.trim().to_string()),
+                    });
+                }
+                let leftover_err = stderr_decoder.finish();
+                if !leftover_err.trim().is_empty() {
+                    last_err_msg = leftover_err.trim().to_string();
+                    stderr_messages.push(leftover_err.trim().to_string());
+                }
+
                 // Clear active child process
                 {
                     *state.active_process.lock().await = None;
