@@ -18,7 +18,7 @@ impl UiLocale {
     }
 }
 
-pub fn cookie_extraction_error_message(browser: &str, locale: UiLocale) -> String {
+pub fn cookie_extraction_error_message(browser: &str, locale: UiLocale, ytdlp_detail: &str) -> String {
     let browser_name = match browser {
         "chrome" => "Google Chrome",
         "edge" => "Microsoft Edge",
@@ -26,11 +26,13 @@ pub fn cookie_extraction_error_message(browser: &str, locale: UiLocale) -> Strin
         "safari" => "Safari",
         _ => browser,
     };
+    let detail = truncate_ytdlp_detail(ytdlp_detail);
 
-    if browser == "chrome" || browser == "edge" {
-        return if locale.is_ja() {
+    let body = if browser == "chrome" || browser == "edge" {
+        if locale.is_ja() {
             format!(
-                "ブラウザ（{}）のクッキーを読み取れませんでした。起動中だと Cookie データベースがロックされます。\n\n\
+                "ブラウザ（{}）のクッキーを読み取れませんでした。\n\
+                起動中のロック以外に、新しい Chrome / Edge では終了後も外部プログラムが Cookie を復号できないことがあります。\n\n\
                 次のいずれかを試してください:\n\
                 1. Firefox で YouTube にログインし、「使用するブラウザのクッキー」を Firefox に切り替える（推奨）\n\
                 2. {} を完全に終了してから再試行する（タスクマネージャーでバックグラウンドプロセスも終了）\n\n\
@@ -39,16 +41,15 @@ pub fn cookie_extraction_error_message(browser: &str, locale: UiLocale) -> Strin
             )
         } else {
             format!(
-                "Could not read cookies from {browser_name}. Chromium locks the cookie database while it is running.\n\n\
+                "Could not read cookies from {browser_name}.\n\
+                Besides a lock while the browser is running, newer Chrome / Edge may block decryption even after quit.\n\n\
                 Try one of the following:\n\
                 1. Sign in to YouTube in Firefox and select Firefox as the cookie source (recommended)\n\
                 2. Fully quit {browser_name} (including background processes in Task Manager) and retry\n\n\
                 See: https://github.com/yt-dlp/yt-dlp/issues/7271"
             )
-        };
-    }
-
-    if locale.is_ja() {
+        }
+    } else if locale.is_ja() {
         format!(
             "ブラウザ（{}）のクッキーを読み取れませんでした。\n\n\
             メン限動画を取得するには、以下のいずれかをお試しください:\n\
@@ -65,7 +66,28 @@ pub fn cookie_extraction_error_message(browser: &str, locale: UiLocale) -> Strin
             2. Sign in to YouTube in another browser (Firefox recommended) and select that browser\n\n\
             See: https://github.com/yt-dlp/yt-dlp/issues/7271"
         )
+    };
+
+    if detail.is_empty() {
+        body
+    } else if locale.is_ja() {
+        format!("{body}\n\nyt-dlp 原文:\n{detail}")
+    } else {
+        format!("{body}\n\nyt-dlp output:\n{detail}")
     }
+}
+
+fn truncate_ytdlp_detail(detail: &str) -> String {
+    let lines: Vec<&str> = detail
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+        .collect();
+    if lines.is_empty() {
+        return String::new();
+    }
+    let start = lines.len().saturating_sub(12);
+    lines[start..].join("\n")
 }
 
 pub fn js_runtime_setup_message(locale: UiLocale) -> String {

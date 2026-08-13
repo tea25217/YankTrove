@@ -9,7 +9,7 @@ const ja = {
   cookieEdge: 'Microsoft Edge',
   cookieSafari: 'Safari',
   cookieLockWarning:
-    '⚠️ Chrome / Edge が起動中だと、クッキーを読み取れずリスト取得やダウンロードに失敗することがあります。Firefox を使うか、対象ブラウザを完全終了してから再試行してください。',
+    '⚠️ Chrome / Edge は起動中のロックに加え、終了後もクッキーを読み取れないことがあります。Firefox の使用を推奨します。',
   saveDirLabel: '保存先フォルダ',
   saveDirPlaceholder: 'デフォルト: ダウンロード/YankTrove',
   browseDir: '選択',
@@ -74,7 +74,7 @@ const ja = {
   urlRequired: 'エラー: チャンネルまたはプレイリストのURLを入力してください。',
   fetchingListLog: '動画リストを取得しています: {url}',
   cookieLockHint:
-    'Chrome / Edge が起動中だとクッキー読み取りに失敗することがあります。失敗したら Firefox を使うか、ブラウザを完全終了して再試行してください。',
+    'Chrome / Edge のクッキー読み取りは、起動中のロック以外でも失敗することがあります。失敗したら Firefox を使うか、ブラウザを完全終了して再試行してください。',
   parsingVideos: '動画情報を解析中...',
   queueTitleWithChannel: '{channel} - アーカイブキュー',
   noArchives: 'アーカイブ動画が見つかりませんでした。公開設定やクッキー設定を確認してください。',
@@ -89,7 +89,7 @@ const ja = {
   noVideosSelected: 'エラー: キューから取得対象の動画を1つ以上選択してください。',
   downloadStarted: 'ダウンロード処理を開始します。総対象数: {count}',
   cookieLockHintDownload:
-    'Chrome / Edge のクッキーを使用します。失敗した場合は Firefox に切り替えるか、ブラウザを完全終了して再試行してください。',
+    'Chrome / Edge のクッキーを使用します。失敗した場合は Firefox に切り替えてください（終了後も読めないことがあります）。',
   allDone: 'すべての動画処理が完了しました。',
   downloadCancelled: 'ダウンロードがユーザーによってキャンセルされました。',
   downloadError: 'ダウンロードプロセス中にエラーが発生しました: {error}',
@@ -108,7 +108,7 @@ const en: { [K in keyof typeof ja]: string } = {
   cookieEdge: 'Microsoft Edge',
   cookieSafari: 'Safari',
   cookieLockWarning:
-    '⚠️ If Chrome / Edge is running, cookie read may fail and list/download can abort. Use Firefox, or fully quit the browser and retry.',
+    '⚠️ Chrome / Edge cookie read can fail while running, and sometimes even after quit. Firefox is recommended.',
   saveDirLabel: 'Save folder',
   saveDirPlaceholder: 'Default: Downloads/YankTrove',
   browseDir: 'Browse',
@@ -173,7 +173,7 @@ const en: { [K in keyof typeof ja]: string } = {
   urlRequired: 'Error: enter a channel or playlist URL.',
   fetchingListLog: 'Fetching video list: {url}',
   cookieLockHint:
-    'Cookie read can fail while Chrome / Edge is running. If it fails, switch to Firefox or fully quit the browser and retry.',
+    'Chrome / Edge cookie read can fail even after the browser is quit. If it fails, switch to Firefox or fully quit the browser and retry.',
   parsingVideos: 'Parsing video information...',
   queueTitleWithChannel: '{channel} — archive queue',
   noArchives: 'No archive videos found. Check visibility and cookie settings.',
@@ -188,7 +188,7 @@ const en: { [K in keyof typeof ja]: string } = {
   noVideosSelected: 'Error: select at least one video in the queue.',
   downloadStarted: 'Starting download. Total: {count}',
   cookieLockHintDownload:
-    'Using Chrome / Edge cookies. If this fails, switch to Firefox or fully quit the browser and retry.',
+    'Using Chrome / Edge cookies. If this fails, switch to Firefox (read can fail even after quit).',
   allDone: 'Finished processing all videos.',
   downloadCancelled: 'Download was cancelled.',
   downloadError: 'Download failed: {error}',

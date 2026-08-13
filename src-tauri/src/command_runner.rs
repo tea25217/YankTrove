@@ -292,7 +292,7 @@ async fn run_flat_playlist_json(
                 if terminated_with_error {
                     let err_summary = stderr_messages.join("\n");
                     if cookies_browser != "none" && is_cookie_extraction_error(&err_summary) {
-                        return Err(cookie_extraction_error_message(cookies_browser, locale));
+                        return Err(cookie_extraction_error_message(cookies_browser, locale, &err_summary));
                     }
                     if err_summary.contains("404")
                         || err_summary.contains("Not Found")
@@ -314,7 +314,7 @@ async fn run_flat_playlist_json(
     if trimmed.is_empty() || trimmed == "null" {
         let err_summary = stderr_messages.join("\n");
         if cookies_browser != "none" && is_cookie_extraction_error(&err_summary) {
-            return Err(cookie_extraction_error_message(cookies_browser, locale));
+            return Err(cookie_extraction_error_message(cookies_browser, locale, &err_summary));
         }
         if err_summary.contains("404")
             || err_summary.contains("Not Found")
@@ -550,6 +550,7 @@ pub async fn download_single_video(
     let mut error_occurred = false;
     let mut js_challenge_failed = false;
     let mut last_err_msg = String::new();
+    let mut stderr_messages = Vec::new();
 
     while let Some(event) = rx.recv().await {
         // Check cancellation
@@ -592,6 +593,7 @@ pub async fn download_single_video(
                 let trimmed = line.trim();
                 if !trimmed.is_empty() {
                     last_err_msg = trimmed.to_string();
+                    stderr_messages.push(trimmed.to_string());
                     if is_js_challenge_error(trimmed) {
                         js_challenge_failed = true;
                     }
@@ -619,10 +621,19 @@ pub async fn download_single_video(
                 }
 
                 if !status.code.map(|c| c == 0).unwrap_or(false) {
+                    let err_summary = if stderr_messages.is_empty() {
+                        last_err_msg.clone()
+                    } else {
+                        stderr_messages.join("\n")
+                    };
                     if options.cookies_browser != "none"
-                        && is_cookie_extraction_error(&last_err_msg)
+                        && is_cookie_extraction_error(&err_summary)
                     {
-                        return Err(cookie_extraction_error_message(&options.cookies_browser, locale));
+                        return Err(cookie_extraction_error_message(
+                            &options.cookies_browser,
+                            locale,
+                            &err_summary,
+                        ));
                     }
                     if js_challenge_failed || is_js_challenge_error(&last_err_msg) {
                         return Err(js_runtime_setup_message(locale));
