@@ -1,6 +1,6 @@
 [package]
 name = "yank-trove"
-version = "0.6.0"
+version = "0.6.1"
 description = "Yank Trove — a desktop app for YouTube channel and playlist archives"
 authors = ["berrytea (2026)"]
 edition = "2024"
