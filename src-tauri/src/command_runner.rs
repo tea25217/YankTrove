@@ -493,22 +493,37 @@ pub async fn download_single_video(
     if options.description {
         args.push("--write-description".to_string());
     }
-    if options.chat {
-        args.push("--write-chat".to_string());
-    }
-    if options.subtitles {
-        let video_language =
-            fetch_video_language(app, video_url, &options.cookies_browser).await;
-        let sub_langs = build_original_sub_lang_filter(video_language.as_deref());
+    // Live chat is a subtitle track named "live_chat" (there is no --write-chat).
+    if options.chat || options.subtitles {
+        let mut sub_langs: Vec<String> = Vec::new();
 
-        args.push("--extractor-args".to_string());
-        args.push("youtube:skip=translated_subs".to_string());
+        if options.chat {
+            sub_langs.push("live_chat".to_string());
+        }
+
+        if options.subtitles {
+            let video_language =
+                fetch_video_language(app, video_url, &options.cookies_browser).await;
+            sub_langs.push(build_original_sub_lang_filter(video_language.as_deref()));
+
+            args.push("--extractor-args".to_string());
+            args.push("youtube:skip=translated_subs".to_string());
+            args.push("--write-auto-subs".to_string());
+        }
+
         args.push("--write-subs".to_string());
-        args.push("--write-auto-subs".to_string());
         args.push("--sub-langs".to_string());
-        args.push(sub_langs);
-        args.push("--sub-format".to_string());
-        args.push("vtt".to_string());
+        args.push(sub_langs.join(","));
+
+        // Prefer VTT for captions; allow json3 so live_chat can still download.
+        if options.subtitles {
+            args.push("--sub-format".to_string());
+            args.push(if options.chat {
+                "vtt/json3/best".to_string()
+            } else {
+                "vtt".to_string()
+            });
+        }
     }
     if options.thumbnail {
         args.push("--write-thumbnail".to_string());
