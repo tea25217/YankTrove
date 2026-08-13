@@ -1,6 +1,6 @@
 {
   "productName": "Yank Trove",
-  "version": "0.6.2",
+  "version": "0.6.3",
   "identifier": "com.yanktrove.desktop",
   "build": {
     "beforeDevCommand": "npm run dev",
