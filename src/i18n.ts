@@ -5,7 +5,7 @@ const ja = {
   cookieLabel: '使用するブラウザのクッキー',
   cookieNone: '使用しない (公開動画のみ)',
   cookieFirefox: 'Firefox（推奨）',
-  cookieChrome: 'Google Chrome',
+  cookieChrome: 'Google Chrome（非推奨）',
   cookieEdge: 'Microsoft Edge',
   cookieSafari: 'Safari',
   cookieLockWarning:
@@ -104,7 +104,7 @@ const en: { [K in keyof typeof ja]: string } = {
   cookieLabel: 'Browser cookies',
   cookieNone: 'Do not use (public videos only)',
   cookieFirefox: 'Firefox (recommended)',
-  cookieChrome: 'Google Chrome',
+  cookieChrome: 'Google Chrome (not recommended)',
   cookieEdge: 'Microsoft Edge',
   cookieSafari: 'Safari',
   cookieLockWarning:
