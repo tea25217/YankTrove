@@ -35,11 +35,14 @@ document.addEventListener('DOMContentLoaded', async () => {
           <label for="cookies-browser">使用するブラウザのクッキー</label>
           <select id="cookies-browser">
             <option value="none">使用しない (公開動画のみ)</option>
+            <option value="firefox">Firefox（推奨）</option>
             <option value="chrome">Google Chrome</option>
             <option value="edge">Microsoft Edge</option>
-            <option value="firefox">Firefox</option>
             <option value="safari">Safari</option>
           </select>
+          <div id="cookie-lock-warning" class="warning-box">
+            ⚠️ Chrome / Edge が起動中だと、クッキーを読み取れずリスト取得やダウンロードに失敗することがあります。Firefox を使うか、対象ブラウザを完全終了してから再試行してください。
+          </div>
         </div>
 
         <div class="form-group">
@@ -139,6 +142,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Get DOM elements
   const channelUrlInput = document.getElementById('channel-url') as HTMLInputElement;
   const cookiesBrowserSelect = document.getElementById('cookies-browser') as HTMLSelectElement;
+  const cookieLockWarningEl = document.getElementById('cookie-lock-warning') as HTMLDivElement;
   const downloadDirInput = document.getElementById('download-dir') as HTMLInputElement;
   const browseDirBtn = document.getElementById('browse-dir') as HTMLButtonElement;
   const fetchListBtn = document.getElementById('fetch-list-btn') as HTMLButtonElement;
@@ -175,10 +179,26 @@ document.addEventListener('DOMContentLoaded', async () => {
     const prefix = isError ? '[ERROR] ' : '';
     const line = document.createElement('div');
     line.style.color = isError ? 'var(--danger-color)' : 'var(--text-primary)';
+    line.style.whiteSpace = 'pre-wrap';
     line.textContent = `[${timestamp}] ${prefix}${message}`;
     consoleLogEl.appendChild(line);
     consoleLogEl.scrollTop = consoleLogEl.scrollHeight;
   }
+
+  function isChromiumCookieBrowser(value: string) {
+    return value === 'chrome' || value === 'edge';
+  }
+
+  function updateCookieLockWarning() {
+    if (isChromiumCookieBrowser(cookiesBrowserSelect.value)) {
+      cookieLockWarningEl.classList.add('visible');
+    } else {
+      cookieLockWarningEl.classList.remove('visible');
+    }
+  }
+
+  cookiesBrowserSelect.addEventListener('change', updateCookieLockWarning);
+  updateCookieLockWarning();
 
   // Update check box interactions
   function updateMediaSelections() {
@@ -270,6 +290,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     fetchListBtn.textContent = 'リスト取得中...';
     consoleStatusEl.textContent = '取得中';
     addLog(`動画リストを取得しています: ${url}`);
+    if (isChromiumCookieBrowser(cookiesBrowserSelect.value)) {
+      addLog('Chrome / Edge が起動中だとクッキー読み取りに失敗することがあります。失敗したら Firefox を使うか、ブラウザを完全終了して再試行してください。');
+    }
     
     videoListEl.innerHTML = `<div style="padding: 20px; text-align: center; color: var(--text-secondary);">動画情報を解析中...</div>`;
 
@@ -293,9 +316,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         addLog(`リストの取得に成功しました。動画数: ${fetchedVideos.length}`);
       }
     } catch (err) {
-      videoListEl.innerHTML = `<div style="padding: 20px; text-align: center; color: var(--danger-color);">リストの取得に失敗しました。詳細: ${err}</div>`;
+      const errText = String(err);
+      videoListEl.replaceChildren();
+      const errorBox = document.createElement('div');
+      errorBox.style.padding = '20px';
+      errorBox.style.color = 'var(--danger-color)';
+      errorBox.style.whiteSpace = 'pre-wrap';
+      errorBox.style.fontSize = '13px';
+      errorBox.style.lineHeight = '1.5';
+      errorBox.textContent = `リストの取得に失敗しました。\n\n${errText}`;
+      videoListEl.appendChild(errorBox);
       startBtn.disabled = true;
-      addLog(`リストの取得に失敗しました: ${err}`, true);
+      addLog(`リストの取得に失敗しました: ${errText}`, true);
     } finally {
       fetchListBtn.disabled = false;
       fetchListBtn.textContent = '動画リストを取得';
@@ -413,6 +445,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     monitorCardEl.style.display = 'block';
     consoleStatusEl.textContent = 'ダウンロード中';
     addLog(`ダウンロード処理を開始します。総対象数: ${selectedVideos.length}`);
+    if (isChromiumCookieBrowser(cookiesBrowserSelect.value)) {
+      addLog('Chrome / Edge のクッキーを使用します。失敗した場合は Firefox に切り替えるか、ブラウザを完全終了して再試行してください。');
+    }
 
     try {
       await invoke('start_download_archive', {

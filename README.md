@@ -140,7 +140,7 @@ brew install ffmpeg
 
 ### Chrome / Edge クッキー読み取り失敗（Windows）
 
-「使用するブラウザのクッキー」で Google Chrome または Microsoft Edge を選択すると、`Could not copy Chrome cookie database` というエラーで動画リストの取得やダウンロードに失敗することがあります。Chromium 系ブラウザが Cookie データベースを排他ロックするためです（[yt-dlp#7271](https://github.com/yt-dlp/yt-dlp/issues/7271)）。
+「使用するブラウザのクッキー」で Google Chrome または Microsoft Edge を選択すると、`Could not copy Chrome cookie database` というエラーで動画リストの取得やダウンロードに失敗することがあります。Chromium 系ブラウザが Cookie データベースを排他ロックするためです（[yt-dlp#7271](https://github.com/yt-dlp/yt-dlp/issues/7271)）。アプリ内でも、Chrome / Edge 選択時に同じ案内を表示します。
 
 **暫定回避策**
 

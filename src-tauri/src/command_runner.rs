@@ -118,13 +118,23 @@ fn cookie_extraction_error_message(browser: &str) -> String {
         "safari" => "Safari",
         _ => browser,
     };
+
+    if browser == "chrome" || browser == "edge" {
+        return format!(
+            "ブラウザ（{}）のクッキーを読み取れませんでした。起動中だと Cookie データベースがロックされます。\n\n\
+            次のいずれかを試してください:\n\
+            1. Firefox で YouTube にログインし、「使用するブラウザのクッキー」を Firefox に切り替える（推奨）\n\
+            2. {} を完全に終了してから再試行する（タスクマネージャーでバックグラウンドプロセスも終了）\n\n\
+            参考: https://github.com/yt-dlp/yt-dlp/issues/7271",
+            browser_name, browser_name
+        );
+    }
+
     format!(
         "ブラウザ（{}）のクッキーを読み取れませんでした。\n\n\
         メン限動画を取得するには、以下のいずれかをお試しください:\n\
         1. {} を完全に終了してから再試行（タスクマネージャーでバックグラウンドプロセスも終了）\n\
-        2. Chrome / Edge の場合: ショートカットの実行ファイルパス末尾に\n\
-           --disable-features=LockProfileCookieDatabase を追加\n\
-        3. 別のブラウザ（Firefox 等）で YouTube にログインし、そのブラウザを選択\n\n\
+        2. 別のブラウザ（Firefox 等）で YouTube にログインし、そのブラウザを選択\n\n\
         参考: https://github.com/yt-dlp/yt-dlp/issues/7271",
         browser_name, browser_name
     )
