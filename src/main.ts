@@ -50,6 +50,8 @@ document.addEventListener('DOMContentLoaded', async () => {
           </div>
         </div>
 
+        <button type="button" id="fetch-list-btn" class="btn btn-secondary">${t('fetchList')}</button>
+
         <div class="form-group">
           <label>${t('saveDirLabel')}</label>
           <div class="input-wrapper">
@@ -101,8 +103,6 @@ document.addEventListener('DOMContentLoaded', async () => {
           <label for="delay-seconds">${t('delayLabel')}</label>
           <input type="number" id="delay-seconds" min="0" max="60" value="5" style="padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-color); outline: none;" />
         </div>
-
-        <button type="button" id="fetch-list-btn" class="btn btn-secondary">${t('fetchList')}</button>
       </div>
       
       <div class="right-pane">
