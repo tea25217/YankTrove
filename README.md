@@ -193,8 +193,8 @@ npm run tauri build
 
 ```bash
 # バージョンを上げたうえで:
-git tag v0.4.1
-git push origin v0.4.1
+git tag v0.5.0
+git push origin v0.5.0
 ```
 
 手動実行は Actions タブの **Release** → **Run workflow** からも可能です。macOS 成果物は動作未確認です。
