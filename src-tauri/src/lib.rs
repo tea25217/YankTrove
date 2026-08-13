@@ -81,7 +81,10 @@ async fn start_download_archive(
             return Err("Cancelled".to_string());
         }
 
-        let video_dir = channel_dir.join(video_folder_name(&video.title, &video.id));
+        let video_dir = channel_dir.join(video_folder_name(
+            &video.title,
+            video.uploaded_at.as_deref(),
+        ));
         std::fs::create_dir_all(&video_dir)
             .map_err(|e| format!("Failed to create directory {:?}: {}", video_dir, e))?;
 

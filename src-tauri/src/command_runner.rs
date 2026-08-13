@@ -536,7 +536,7 @@ pub async fn download_single_video(
     }
 
     // Output template inside the per-video subdirectory
-    // Example: {title} [{id}]/{title} [{id}].ext
+    // Example: {date}_{title}/{title} [{id}].ext
     args.push("--windows-filenames".to_string());
     let output_template = output_dir.join("%(title)s [%(id)s].%(ext)s");
     let output_str = output_template.to_string_lossy().to_string();

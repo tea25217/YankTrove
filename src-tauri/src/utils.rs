@@ -26,11 +26,11 @@ pub fn sanitize_folder_name(name: &str) -> String {
         .to_string()
 }
 
-/// Folder name for one video: `{sanitized title} [{id}]`.
-/// Title is truncated so the folder stays within common path limits; the id is always kept.
-pub fn video_folder_name(title: &str, video_id: &str) -> String {
-    let id = sanitize_folder_name(video_id);
-    let id = if id.is_empty() { "unknown".to_string() } else { id };
+/// Folder name for one video: `{YYYY-MM-DD}_{sanitized title}`.
+/// Title is truncated so the folder stays within common path limits.
+/// Missing dates become `unknown-date`. Unix timestamps are converted to UTC dates.
+pub fn video_folder_name(title: &str, uploaded_at: Option<&str>) -> String {
+    let date = folder_date_prefix(uploaded_at);
 
     let mut name = sanitize_folder_name(title);
     if name.is_empty() {
@@ -46,11 +46,52 @@ pub fn video_folder_name(title: &str, video_id: &str) -> String {
         }
     }
 
-    if WINDOWS_RESERVED_NAMES.iter().any(|reserved| name.eq_ignore_ascii_case(reserved)) {
-        name = format!("_{name}");
+    let folder = format!("{date}_{name}");
+    if WINDOWS_RESERVED_NAMES.iter().any(|reserved| folder.eq_ignore_ascii_case(reserved)) {
+        format!("_{folder}")
+    } else {
+        folder
+    }
+}
+
+fn folder_date_prefix(uploaded_at: Option<&str>) -> String {
+    let Some(raw) = uploaded_at.map(str::trim).filter(|value| !value.is_empty()) else {
+        return "unknown-date".to_string();
+    };
+
+    if raw.len() >= 10
+        && raw.as_bytes().get(4) == Some(&b'-')
+        && raw.as_bytes().get(7) == Some(&b'-')
+        && raw.as_bytes()[..10].iter().all(|b| b.is_ascii_digit() || *b == b'-')
+    {
+        return raw[..10].to_string();
     }
 
-    format!("{name} [{id}]")
+    if let Ok(timestamp) = raw.parse::<i64>() {
+        return unix_utc_ymd(timestamp);
+    }
+
+    let sanitized = sanitize_folder_name(raw).replace(' ', "-");
+    if sanitized.is_empty() {
+        "unknown-date".to_string()
+    } else {
+        sanitized
+    }
+}
+
+fn unix_utc_ymd(timestamp: i64) -> String {
+    let days = timestamp.div_euclid(86_400);
+    let z = days + 719_468;
+    let era = if z >= 0 { z } else { z - 146_096 }.div_euclid(146_097);
+    let doe = (z - era * 146_097) as u32;
+    let yoe = (doe - doe / 1_460 + doe / 36_524 - doe / 146_096) / 365;
+    let y = yoe as i64 + era * 400;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = doy - (153 * mp + 2) / 5 + 1;
+    let m = if mp < 10 { mp + 3 } else { mp - 9 };
+    let y = if m <= 2 { y + 1 } else { y };
+    format!("{y:04}-{m:02}-{d:02}")
 }
 
 #[derive(Clone, Debug)]
