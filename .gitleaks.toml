@@ -10,6 +10,7 @@ paths = [
   '''(^|/)Cargo\.lock$''',
   '''(^|/)src-tauri/Cargo\.lock$''',
   '''(^|/)scripts/scan-secrets\.sh$''',
+  '''(^|/)\.env\.example$''',
 ]
 regexes = [
   '''tea25217@users\.noreply\.github\.com''',
@@ -18,7 +19,7 @@ regexes = [
 [[rules]]
 id = "dotenv-file"
 description = "Committed .env file"
-path = '''(^|/)\.env($|\.(?!example$))'''
+path = '''(^|/)\.env($|\.)'''
 regex = '''.'''
 tags = ["secret", "dotenv"]
 
