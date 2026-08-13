@@ -37,12 +37,11 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "resources": [
-      "../README.md",
-      "../README.txt",
-      "../LICENSE",
-      "../THIRD_PARTY_LICENSES.md"
-    ],
+    "resources": {
+      "../README.txt": "README.txt",
+      "../LICENSE": "LICENSE",
+      "../THIRD_PARTY_LICENSES.md": "THIRD_PARTY_LICENSES.md"
+    },
     "externalBin": [
       "binaries/yt-dlp",
       "binaries/deno"
