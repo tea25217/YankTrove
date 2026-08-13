@@ -5,16 +5,14 @@ use tauri::{Emitter, Manager};
 mod utils;
 mod command_runner;
 
-use crate::utils::{is_ffmpeg_installed, detect_js_runtime, cleanup_incomplete_files};
+use crate::utils::{
+    is_ffmpeg_installed, detect_js_runtime, cleanup_incomplete_files, sanitize_folder_name,
+    video_folder_name,
+};
 use crate::command_runner::{
     AppState, DownloadOptions, VideoDownloadTarget, ChannelInfo, ProgressPayload,
     fetch_channel_videos, download_single_video,
 };
-
-fn sanitize_folder_name(name: &str) -> String {
-    let re = regex::Regex::new(r#"[<>:"/\\|?*]"#).unwrap();
-    re.replace_all(name, "").trim().to_string()
-}
 
 #[derive(serde::Serialize)]
 struct EnvStatus {
@@ -76,6 +74,10 @@ async fn start_download_archive(
             return Err("Cancelled".to_string());
         }
 
+        let video_dir = channel_dir.join(video_folder_name(&video.title, &video.id));
+        std::fs::create_dir_all(&video_dir)
+            .map_err(|e| format!("Failed to create directory {:?}: {}", video_dir, e))?;
+
         // Notify UI that video processing has started
         let _ = app.emit("video-started", video.id.clone());
 
@@ -85,7 +87,7 @@ async fn start_download_archive(
             &video.id,
             &video.url,
             &options,
-            &channel_dir,
+            &video_dir,
         )
         .await
         {
@@ -95,7 +97,7 @@ async fn start_download_archive(
             Err(e) => {
                 if e == "Cancelled" {
                     // Clean up incomplete files for the active download
-                    let _ = cleanup_incomplete_files(&channel_dir, &video.id);
+                    let _ = cleanup_incomplete_files(&video_dir, &video.id);
                     let _ = app.emit("download-log", ProgressPayload {
                         video_id: video.id.clone(),
                         percentage: 0.0,

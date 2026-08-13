@@ -452,7 +452,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
       await invoke('start_download_archive', {
         options,
-        videos: selectedVideos.map(video => ({ id: video.id, url: video.url })),
+        videos: selectedVideos.map(video => ({ id: video.id, url: video.url, title: video.title })),
         channelTitle: currentChannelTitle,
         delaySeconds,
         customDir: selectedDir,

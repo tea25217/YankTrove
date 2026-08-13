@@ -1,6 +1,7 @@
 export interface VideoDownloadTarget {
   id: string;
   url: string;
+  title: string;
 }
 
 export interface DownloadOptions {

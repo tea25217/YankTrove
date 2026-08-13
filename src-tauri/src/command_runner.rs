@@ -42,6 +42,8 @@ impl AppState {
 pub struct VideoDownloadTarget {
     pub id: String,
     pub url: String,
+    #[serde(default)]
+    pub title: String,
 }
 
 #[derive(serde::Deserialize, Clone, Debug)]
@@ -438,12 +440,12 @@ pub async fn download_single_video(
     video_id: &str,
     video_url: &str,
     options: &DownloadOptions,
-    channel_dir: &Path,
+    output_dir: &Path,
 ) -> Result<(), String> {
     // Save current video ID and target folder in AppState for cancellation cleanup
     {
         *state.current_video_id.lock().await = Some(video_id.to_string());
-        *state.current_download_dir.lock().await = Some(channel_dir.to_path_buf());
+        *state.current_download_dir.lock().await = Some(output_dir.to_path_buf());
     }
 
     let mut args = vec![video_url.to_string()];
@@ -506,9 +508,10 @@ pub async fn download_single_video(
         args.push("--skip-download".to_string());
     }
 
-    // Output template path inside the channel subdirectory
-    // Example: channel_dir/video_title [video_id].ext
-    let output_template = channel_dir.join("%(title)s [%(id)s].%(ext)s");
+    // Output template inside the per-video subdirectory
+    // Example: {title} [{id}]/{title} [{id}].ext
+    args.push("--windows-filenames".to_string());
+    let output_template = output_dir.join("%(title)s [%(id)s].%(ext)s");
     let output_str = output_template.to_string_lossy().to_string();
     args.push("-o".to_string());
     args.push(output_str);

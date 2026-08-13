@@ -2,6 +2,57 @@ use std::path::{Path, PathBuf};
 use std::fs;
 use tauri_plugin_shell::ShellExt;
 
+const WINDOWS_RESERVED_NAMES: &[&str] = &[
+    "CON", "PRN", "AUX", "NUL",
+    "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
+    "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
+];
+
+/// Removes characters that are illegal in Windows / macOS folder names.
+pub fn sanitize_folder_name(name: &str) -> String {
+    let without_illegal: String = name
+        .chars()
+        .map(|ch| match ch {
+            '<' | '>' | ':' | '"' | '/' | '\\' | '|' | '?' | '*' => ' ',
+            c if c.is_control() => ' ',
+            c => c,
+        })
+        .collect();
+    without_illegal
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+        .trim_matches(|c: char| c == '.' || c.is_whitespace())
+        .to_string()
+}
+
+/// Folder name for one video: `{sanitized title} [{id}]`.
+/// Title is truncated so the folder stays within common path limits; the id is always kept.
+pub fn video_folder_name(title: &str, video_id: &str) -> String {
+    let id = sanitize_folder_name(video_id);
+    let id = if id.is_empty() { "unknown".to_string() } else { id };
+
+    let mut name = sanitize_folder_name(title);
+    if name.is_empty() {
+        name = "untitled".to_string();
+    }
+
+    const MAX_TITLE_CHARS: usize = 80;
+    if name.chars().count() > MAX_TITLE_CHARS {
+        name = name.chars().take(MAX_TITLE_CHARS).collect::<String>();
+        name = name.trim_matches(|c: char| c == '.' || c.is_whitespace()).to_string();
+        if name.is_empty() {
+            name = "untitled".to_string();
+        }
+    }
+
+    if WINDOWS_RESERVED_NAMES.iter().any(|reserved| name.eq_ignore_ascii_case(reserved)) {
+        name = format!("_{name}");
+    }
+
+    format!("{name} [{id}]")
+}
+
 #[derive(Clone, Debug)]
 pub struct JsRuntimeInfo {
     pub installed: bool,
