@@ -9,6 +9,8 @@ let fetchedVideos: VideoInfo[] = [];
 let selectedDir: string | null = null;
 let currentChannelTitle = "Channel";
 let isDownloading = false;
+const checkedVideoIds = new Set<string>();
+const videoStatusById = new Map<string, 'waiting' | 'working' | 'complete'>();
 
 document.addEventListener('DOMContentLoaded', async () => {
   const appEl = document.getElementById('app');
@@ -108,6 +110,28 @@ document.addEventListener('DOMContentLoaded', async () => {
             <span class="queue-title" id="channel-title-display">${t('queueTitle')}</span>
             <span class="queue-stats" id="queue-stats-display">${t('queueStats', { selected: 0, total: 0 })}</span>
           </div>
+          <div class="queue-filters" id="queue-filters">
+            <label class="queue-filter">
+              <span>${t('filterTitle')}</span>
+              <input type="search" id="filter-title" placeholder="${t('filterTitlePlaceholder')}" />
+            </label>
+            <label class="queue-filter">
+              <span>${t('filterDateFrom')}</span>
+              <input type="date" id="filter-date-from" />
+            </label>
+            <label class="queue-filter">
+              <span>${t('filterDateTo')}</span>
+              <input type="date" id="filter-date-to" />
+            </label>
+            <label class="queue-filter">
+              <span>${t('filterAvailability')}</span>
+              <select id="filter-availability">
+                <option value="all">${t('filterAvailabilityAll')}</option>
+                <option value="public">${t('filterAvailabilityPublic')}</option>
+                <option value="members">${t('filterAvailabilityMembers')}</option>
+              </select>
+            </label>
+          </div>
           <div class="video-list-container" id="video-list">
             <div style="padding: 20px; text-align: center; color: var(--text-secondary); font-size: 13px;">
               ${t('queueEmpty')}
@@ -163,6 +187,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   const videoListEl = document.getElementById('video-list') as HTMLDivElement;
   const channelTitleDisplay = document.getElementById('channel-title-display') as HTMLSpanElement;
   const queueStatsDisplay = document.getElementById('queue-stats-display') as HTMLSpanElement;
+  const filterTitleInput = document.getElementById('filter-title') as HTMLInputElement;
+  const filterDateFromInput = document.getElementById('filter-date-from') as HTMLInputElement;
+  const filterDateToInput = document.getElementById('filter-date-to') as HTMLInputElement;
+  const filterAvailabilitySelect = document.getElementById('filter-availability') as HTMLSelectElement;
   
   const startBtn = document.getElementById('start-btn') as HTMLButtonElement;
   const cancelBtn = document.getElementById('cancel-btn') as HTMLButtonElement;
@@ -205,6 +233,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   cookiesBrowserSelect.addEventListener('change', updateCookieLockWarning);
   updateCookieLockWarning();
+
+  [filterTitleInput, filterDateFromInput, filterDateToInput, filterAvailabilitySelect].forEach(el => {
+    el.addEventListener('input', () => {
+      if (fetchedVideos.length > 0) {
+        renderQueue();
+      }
+    });
+    el.addEventListener('change', () => {
+      if (fetchedVideos.length > 0) {
+        renderQueue();
+      }
+    });
+  });
 
   // Update check box interactions
   function updateMediaSelections() {
@@ -309,6 +350,16 @@ document.addEventListener('DOMContentLoaded', async () => {
       fetchedVideos = info.videos;
       currentChannelTitle = info.channel_title;
       channelTitleDisplay.textContent = t('queueTitleWithChannel', { channel: info.channel_title });
+      checkedVideoIds.clear();
+      videoStatusById.clear();
+      fetchedVideos.forEach(video => {
+        checkedVideoIds.add(video.id);
+        videoStatusById.set(video.id, 'waiting');
+      });
+      filterTitleInput.value = '';
+      filterDateFromInput.value = '';
+      filterDateToInput.value = '';
+      filterAvailabilitySelect.value = 'all';
       
       if (fetchedVideos.length === 0) {
         videoListEl.innerHTML = `<div style="padding: 20px; text-align: center; color: var(--text-secondary);">${t('noArchives')}</div>`;
@@ -316,7 +367,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         addLog(t('listEmpty'), true);
       } else {
         renderQueue();
-        startBtn.disabled = false;
         addLog(t('listSuccess', { count: fetchedVideos.length }));
       }
     } catch (err) {
@@ -340,47 +390,162 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   // Render the video rows inside the queue card
+  function videoDateKey(video: VideoInfo): string | null {
+    const raw = video.uploaded_at?.trim();
+    if (!raw) {
+      return null;
+    }
+    if (/^\d{4}-\d{2}-\d{2}/.test(raw)) {
+      return raw.slice(0, 10);
+    }
+    if (/^\d+$/.test(raw)) {
+      const date = new Date(Number(raw) * 1000);
+      if (Number.isNaN(date.getTime())) {
+        return null;
+      }
+      return date.toISOString().slice(0, 10);
+    }
+    return null;
+  }
+
+  function isMembersAvailability(value: string | null): boolean {
+    const normalized = (value || '').toLowerCase();
+    return (
+      normalized.includes('subscriber_only') ||
+      normalized.includes('premium_only') ||
+      normalized.includes('member')
+    );
+  }
+
+  function getFilteredVideos(): VideoInfo[] {
+    const titleQuery = filterTitleInput.value.trim().toLowerCase();
+    const dateFrom = filterDateFromInput.value;
+    const dateTo = filterDateToInput.value;
+    const availability = filterAvailabilitySelect.value;
+
+    return fetchedVideos.filter(video => {
+      if (titleQuery && !video.title.toLowerCase().includes(titleQuery)) {
+        return false;
+      }
+
+      const dateKey = videoDateKey(video);
+      if (dateFrom || dateTo) {
+        if (!dateKey) {
+          return false;
+        }
+        if (dateFrom && dateKey < dateFrom) {
+          return false;
+        }
+        if (dateTo && dateKey > dateTo) {
+          return false;
+        }
+      }
+
+      if (availability === 'members') {
+        return isMembersAvailability(video.availability);
+      }
+      if (availability === 'public') {
+        return !isMembersAvailability(video.availability);
+      }
+      return true;
+    });
+  }
+
   function renderQueue() {
+    const visibleVideos = getFilteredVideos();
     videoListEl.innerHTML = '';
-    
-    // Add "Select All" control header
+
+    if (visibleVideos.length === 0) {
+      const empty = document.createElement('div');
+      empty.style.padding = '20px';
+      empty.style.textAlign = 'center';
+      empty.style.color = 'var(--text-secondary)';
+      empty.style.fontSize = '13px';
+      empty.textContent = fetchedVideos.length === 0 ? t('queueEmpty') : t('filterNoMatch');
+      videoListEl.appendChild(empty);
+      updateQueueStats();
+      return;
+    }
+
     const selectAllRow = document.createElement('div');
     selectAllRow.className = 'video-row';
     selectAllRow.style.borderBottom = '2px solid var(--border-color)';
     selectAllRow.style.background = '#f8fafc';
-    selectAllRow.innerHTML = `
-      <input type="checkbox" id="select-all-videos" checked />
-      <span class="video-title-text" style="font-weight: 600;">${t('selectAll')}</span>
-    `;
+
+    const selectAllCheckbox = document.createElement('input');
+    selectAllCheckbox.type = 'checkbox';
+    selectAllCheckbox.id = 'select-all-videos';
+    const allVisibleChecked = visibleVideos.every(video => checkedVideoIds.has(video.id));
+    selectAllCheckbox.checked = allVisibleChecked;
+
+    const selectAllLabel = document.createElement('span');
+    selectAllLabel.className = 'video-title-text';
+    selectAllLabel.style.fontWeight = '600';
+    selectAllLabel.textContent = t('selectAll');
+    selectAllRow.append(selectAllCheckbox, selectAllLabel);
     videoListEl.appendChild(selectAllRow);
 
-    fetchedVideos.forEach(video => {
+    visibleVideos.forEach(video => {
       const row = document.createElement('div');
       row.className = 'video-row';
+      const status = videoStatusById.get(video.id) || 'waiting';
+      if (status === 'working') {
+        row.classList.add('selected');
+      } else if (status === 'complete') {
+        row.classList.add('completed');
+      }
       row.id = `video-${video.id}`;
-      row.innerHTML = `
-        <input type="checkbox" class="video-select-cb" data-id="${video.id}" checked />
-        <span class="video-title-text" title="${video.title}">${video.title}</span>
-        <span class="video-status-text">${t('statusWaiting')}</span>
-      `;
+
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.className = 'video-select-cb';
+      checkbox.dataset.id = video.id;
+      checkbox.checked = checkedVideoIds.has(video.id);
+      checkbox.disabled = isDownloading;
+
+      const title = document.createElement('span');
+      title.className = 'video-title-text';
+      title.title = video.title;
+      title.textContent = video.title;
+
+      const statusText = document.createElement('span');
+      statusText.className = 'video-status-text';
+      statusText.textContent =
+        status === 'working' ? t('statusWorking') :
+        status === 'complete' ? t('statusComplete') :
+        t('statusWaiting');
+
+      row.append(checkbox, title, statusText);
       videoListEl.appendChild(row);
     });
 
-    const selectAllCheckbox = document.getElementById('select-all-videos') as HTMLInputElement;
-    const itemCheckboxes = document.querySelectorAll('.video-select-cb') as NodeListOf<HTMLInputElement>;
-
+    selectAllCheckbox.disabled = isDownloading;
     selectAllCheckbox.addEventListener('change', () => {
       const checked = selectAllCheckbox.checked;
-      itemCheckboxes.forEach(cb => {
-        cb.checked = checked;
+      visibleVideos.forEach(video => {
+        if (checked) {
+          checkedVideoIds.add(video.id);
+        } else {
+          checkedVideoIds.delete(video.id);
+        }
+      });
+      videoListEl.querySelectorAll('.video-select-cb').forEach(el => {
+        (el as HTMLInputElement).checked = checked;
       });
       updateQueueStats();
     });
 
-    itemCheckboxes.forEach(cb => {
-      cb.addEventListener('change', () => {
-        const checkedCount = Array.from(itemCheckboxes).filter(c => c.checked).length;
-        selectAllCheckbox.checked = checkedCount === itemCheckboxes.length;
+    videoListEl.querySelectorAll('.video-select-cb').forEach(el => {
+      el.addEventListener('change', () => {
+        const checkbox = el as HTMLInputElement;
+        const id = checkbox.dataset.id || '';
+        if (checkbox.checked) {
+          checkedVideoIds.add(id);
+        } else {
+          checkedVideoIds.delete(id);
+        }
+        const visibleChecked = visibleVideos.filter(video => checkedVideoIds.has(video.id)).length;
+        selectAllCheckbox.checked = visibleChecked === visibleVideos.length;
         updateQueueStats();
       });
     });
@@ -389,26 +554,26 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   function updateQueueStats() {
-    const itemCheckboxes = document.querySelectorAll('.video-select-cb') as NodeListOf<HTMLInputElement>;
-    const checkedCount = Array.from(itemCheckboxes).filter(c => c.checked).length;
-    queueStatsDisplay.textContent = t('queueStats', { selected: checkedCount, total: fetchedVideos.length });
-    
-    if (checkedCount > 0 && !isDownloading) {
-      startBtn.disabled = false;
+    const visibleVideos = getFilteredVideos();
+    const selectedCount = visibleVideos.filter(video => checkedVideoIds.has(video.id)).length;
+    if (visibleVideos.length !== fetchedVideos.length && fetchedVideos.length > 0) {
+      queueStatsDisplay.textContent = t('queueStatsFiltered', {
+        selected: selectedCount,
+        visible: visibleVideos.length,
+        total: fetchedVideos.length,
+      });
     } else {
-      startBtn.disabled = true;
+      queueStatsDisplay.textContent = t('queueStats', {
+        selected: selectedCount,
+        total: fetchedVideos.length,
+      });
     }
+
+    startBtn.disabled = selectedCount === 0 || isDownloading;
   }
 
-  // Get currently selected videos
   function getSelectedVideos(): VideoInfo[] {
-    const itemCheckboxes = document.querySelectorAll('.video-select-cb') as NodeListOf<HTMLInputElement>;
-    const selectedIds = new Set(
-      Array.from(itemCheckboxes)
-        .filter(cb => cb.checked)
-        .map(cb => cb.getAttribute('data-id') || '')
-    );
-    return fetchedVideos.filter(video => selectedIds.has(video.id));
+    return getFilteredVideos().filter(video => checkedVideoIds.has(video.id));
   }
 
   // Start download loop execution
@@ -442,6 +607,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     fetchListBtn.disabled = true;
     cookiesBrowserSelect.disabled = true;
     channelUrlInput.disabled = true;
+    filterTitleInput.disabled = true;
+    filterDateFromInput.disabled = true;
+    filterDateToInput.disabled = true;
+    filterAvailabilitySelect.disabled = true;
     
     // Disable selections
     document.querySelectorAll('.video-select-cb').forEach(el => (el as HTMLInputElement).disabled = true);
@@ -508,6 +677,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     fetchListBtn.disabled = false;
     cookiesBrowserSelect.disabled = false;
     channelUrlInput.disabled = false;
+    filterTitleInput.disabled = false;
+    filterDateFromInput.disabled = false;
+    filterDateToInput.disabled = false;
+    filterAvailabilitySelect.disabled = false;
 
     // Enable checkboxes
     document.querySelectorAll('.video-select-cb').forEach(el => (el as HTMLInputElement).disabled = false);
@@ -536,6 +709,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const statusText = row.querySelector('.video-status-text');
       if (statusText) statusText.textContent = t('statusWorking');
     }
+    videoStatusById.set(videoId, 'working');
     
     // Find the title matching the videoId
     const video = fetchedVideos.find(v => v.id === videoId);
@@ -561,6 +735,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const statusText = row.querySelector('.video-status-text');
       if (statusText) statusText.textContent = t('statusComplete');
     }
+    videoStatusById.set(videoId, 'complete');
     
     const video = fetchedVideos.find(v => v.id === videoId);
     if (video) {
