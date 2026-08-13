@@ -14,7 +14,7 @@ use crate::utils::{
 use crate::i18n::UiLocale;
 use crate::command_runner::{
     AppState, DownloadOptions, VideoDownloadTarget, ChannelInfo, ProgressPayload,
-    fetch_channel_videos, download_single_video,
+    fetch_channel_videos, download_single_video, probe_video,
 };
 
 #[derive(serde::Serialize)]
@@ -81,9 +81,24 @@ async fn start_download_archive(
             return Err("Cancelled".to_string());
         }
 
+        // Flat-playlist list often lacks upload_date; always probe full metadata for the folder
+        // name (even when the UI "metadata" checkbox is off — that only writes info.json).
+        let list_date = video
+            .uploaded_at
+            .as_deref()
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .map(str::to_string);
+        let probe = probe_video(&app, &video.url, &options.cookies_browser).await;
+        let uploaded_at = probe
+            .as_ref()
+            .and_then(|p| p.uploaded_at.clone())
+            .or(list_date);
+        let prefetched_language = probe.and_then(|p| p.language);
+
         let video_dir = channel_dir.join(video_folder_name(
             &video.title,
-            video.uploaded_at.as_deref(),
+            uploaded_at.as_deref(),
         ));
         std::fs::create_dir_all(&video_dir)
             .map_err(|e| format!("Failed to create directory {:?}: {}", video_dir, e))?;
@@ -93,7 +108,7 @@ async fn start_download_archive(
                 id: video.id.clone(),
                 title: video.title.clone(),
                 url: video.url.clone(),
-                uploaded_at: video.uploaded_at.clone().unwrap_or_default(),
+                uploaded_at: uploaded_at.clone().unwrap_or_default(),
                 duration: format_duration_seconds(video.duration),
                 availability: video
                     .availability
@@ -115,6 +130,7 @@ async fn start_download_archive(
             &options,
             &video_dir,
             ui_locale,
+            prefetched_language,
         )
         .await
         {

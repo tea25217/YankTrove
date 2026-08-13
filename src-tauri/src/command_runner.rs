@@ -197,6 +197,58 @@ fn parse_uploaded_at(entry: &serde_json::Value) -> Option<String> {
     Some(timestamp.to_string())
 }
 
+fn parse_video_language(entry: &serde_json::Value) -> Option<String> {
+    entry["language"]
+        .as_str()
+        .or_else(|| entry["lang"].as_str())
+        .map(str::trim)
+        .filter(|lang| !lang.is_empty())
+        .map(str::to_string)
+}
+
+/// Per-video metadata from yt-dlp `-J --skip-download` (not flat-playlist).
+#[derive(Clone, Debug, Default)]
+pub struct VideoProbe {
+    pub uploaded_at: Option<String>,
+    pub language: Option<String>,
+}
+
+/// Fetch full video metadata for folder dates / subtitle language.
+/// Independent of the UI "metadata" checkbox (that only controls writing info.json).
+pub async fn probe_video(
+    app: &tauri::AppHandle,
+    video_url: &str,
+    cookies_browser: &str,
+) -> Option<VideoProbe> {
+    let mut args = vec![
+        "-J".to_string(),
+        "--skip-download".to_string(),
+        video_url.to_string(),
+    ];
+
+    if cookies_browser != "none" {
+        args.push("--cookies-from-browser".to_string());
+        args.push(cookies_browser.to_string());
+    }
+
+    let (mut rx, _child) = spawn_yt_dlp(app, args).ok()?;
+    let mut json_buffer = Vec::new();
+
+    while let Some(event) = rx.recv().await {
+        if let CommandEvent::Stdout(bytes) = event {
+            json_buffer.extend_from_slice(&bytes);
+        }
+    }
+
+    let json_str = String::from_utf8(json_buffer).ok()?;
+    let parsed: serde_json::Value = serde_json::from_str(&json_str).ok()?;
+
+    Some(VideoProbe {
+        uploaded_at: parse_uploaded_at(&parsed),
+        language: parse_video_language(&parsed),
+    })
+}
+
 fn parse_availability(entry: &serde_json::Value) -> Option<String> {
     let availability = entry["availability"]
         .as_str()
@@ -418,35 +470,9 @@ async fn fetch_video_language(
     video_url: &str,
     cookies_browser: &str,
 ) -> Option<String> {
-    let mut args = vec![
-        "-J".to_string(),
-        "--skip-download".to_string(),
-        video_url.to_string(),
-    ];
-
-    if cookies_browser != "none" {
-        args.push("--cookies-from-browser".to_string());
-        args.push(cookies_browser.to_string());
-    }
-
-    let (mut rx, _child) = spawn_yt_dlp(app, args).ok()?;
-    let mut json_buffer = Vec::new();
-
-    while let Some(event) = rx.recv().await {
-        if let CommandEvent::Stdout(bytes) = event {
-            json_buffer.extend_from_slice(&bytes);
-        }
-    }
-
-    let json_str = String::from_utf8(json_buffer).ok()?;
-    let parsed: serde_json::Value = serde_json::from_str(&json_str).ok()?;
-
-    parsed["language"]
-        .as_str()
-        .or_else(|| parsed["lang"].as_str())
-        .map(str::trim)
-        .filter(|lang| !lang.is_empty())
-        .map(str::to_string)
+    probe_video(app, video_url, cookies_browser)
+        .await
+        .and_then(|probe| probe.language)
 }
 
 /// Build a yt-dlp --sub-langs value that prefers the video's original language.
@@ -468,6 +494,7 @@ pub async fn download_single_video(
     options: &DownloadOptions,
     output_dir: &Path,
     locale: UiLocale,
+    prefetched_language: Option<String>,
 ) -> Result<(), String> {
     // Save current video ID and target folder in AppState for cancellation cleanup
     {
@@ -502,8 +529,10 @@ pub async fn download_single_video(
         }
 
         if options.subtitles {
-            let video_language =
-                fetch_video_language(app, video_url, &options.cookies_browser).await;
+            let video_language = match prefetched_language {
+                Some(lang) => Some(lang),
+                None => fetch_video_language(app, video_url, &options.cookies_browser).await,
+            };
             sub_langs.push(build_original_sub_lang_filter(video_language.as_deref()));
 
             args.push("--extractor-args".to_string());
