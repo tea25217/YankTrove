@@ -209,6 +209,18 @@ git push origin v0.5.2
 `yt-dlp` と Deno の実行ファイルは Git に含めていません（GitHub のファイルサイズ制限のため）。  
 配置方法は [src-tauri/binaries/README.md](./src-tauri/binaries/README.md) を参照してください。CI では `.github/scripts/download-sidecars.sh` が自動取得します。
 
+### シークレット / 個人情報スキャン
+
+`push` と pull request で [Gitleaks](https://github.com/gitleaks/gitleaks) が走り、API キー・秘密鍵・設定ファイル内のメール／電話番号などを検知すると失敗します。
+
+ローカルの `git commit` / `git push` でも止める場合（初回のみ）:
+
+```powershell
+powershell -File scripts/install-git-hooks.ps1
+```
+
+フルルールで見るには [gitleaks](https://github.com/gitleaks/gitleaks) を PATH に入れてください。未導入でも、秘密鍵や GitHub トークンなど確度の高いパターンは hook 側のフォールバックで拒否します。
+
 ---
 
 
