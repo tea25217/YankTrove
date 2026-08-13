@@ -61,6 +61,7 @@ jobs:
         with:
           tagName: v__VERSION__
           releaseName: 'Yank Trove v__VERSION__'
+          generateReleaseNotes: true
           releaseBody: |
             Windows / macOS 向けインストーラーです。yt-dlp と Deno を同梱しています。
 
