@@ -478,9 +478,17 @@ input[type="text"]:focus, select:focus {
 
 .progress-meta {
   display: flex;
-  gap: 16px;
-  color: var(--text-secondary);
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
   font-weight: 500;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+#download-count {
+  font-weight: 700;
+  color: var(--text-primary);
 }
 
 .progress-bar-container {

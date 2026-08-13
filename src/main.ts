@@ -55,6 +55,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           <div class="input-wrapper">
             <input type="text" id="download-dir" readonly placeholder="${t('saveDirPlaceholder')}" />
             <button type="button" id="browse-dir" class="browse-btn">${t('browseDir')}</button>
+            <button type="button" id="open-dir" class="browse-btn">${t('openDir')}</button>
           </div>
         </div>
 
@@ -148,6 +149,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           <div class="progress-header">
             <span id="active-video-title" style="font-weight: 600; max-width: 50%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${t('processingVideo')}</span>
             <div class="progress-meta">
+              <span id="download-count">${t('progressCount', { current: 0, total: 0 })}</span>
               <span id="download-speed">- MB/s</span>
               <span id="download-eta">${t('etaIdle')}</span>
               <span id="download-percent" style="color: var(--primary-color); font-weight: 700;">0%</span>
@@ -175,6 +177,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const cookieLockWarningEl = document.getElementById('cookie-lock-warning') as HTMLDivElement;
   const downloadDirInput = document.getElementById('download-dir') as HTMLInputElement;
   const browseDirBtn = document.getElementById('browse-dir') as HTMLButtonElement;
+  const openDirBtn = document.getElementById('open-dir') as HTMLButtonElement;
   const fetchListBtn = document.getElementById('fetch-list-btn') as HTMLButtonElement;
   
   const optVideoCheckbox = document.getElementById('opt-video') as HTMLInputElement;
@@ -200,12 +203,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   const downloadSpeedEl = document.getElementById('download-speed') as HTMLSpanElement;
   const downloadEtaEl = document.getElementById('download-eta') as HTMLSpanElement;
   const downloadPercentEl = document.getElementById('download-percent') as HTMLSpanElement;
+  const downloadCountEl = document.getElementById('download-count') as HTMLSpanElement;
   const progressBarEl = document.getElementById('progress-bar') as HTMLDivElement;
   
   const consoleLogEl = document.getElementById('console-log') as HTMLDivElement;
   const consoleStatusEl = document.getElementById('console-status') as HTMLSpanElement;
   const jsRuntimeStatusBadge = document.getElementById('js-runtime-status') as HTMLDivElement;
   const ffmpegStatusBadge = document.getElementById('ffmpeg-status') as HTMLDivElement;
+  let downloadJobCurrent = 0;
+  let downloadJobTotal = 0;
 
   // Log utility
   function addLog(message: string, isError = false) {
@@ -319,6 +325,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     } catch (err) {
       addLog(t('browseDirError', { error: String(err) }), true);
+    }
+  });
+
+  openDirBtn.addEventListener('click', async () => {
+    try {
+      await invoke('open_save_folder', { customDir: selectedDir });
+    } catch (err) {
+      addLog(t('openDirError', { error: String(err) }), true);
     }
   });
 
@@ -618,6 +632,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     monitorCardEl.style.display = 'block';
     consoleStatusEl.textContent = t('statusDownloading');
+    downloadJobTotal = selectedVideos.length;
+    downloadJobCurrent = 0;
+    downloadCountEl.textContent = t('progressCount', { current: 0, total: downloadJobTotal });
     addLog(t('downloadStarted', { count: selectedVideos.length }));
     if (isChromiumCookieBrowser(cookiesBrowserSelect.value)) {
       addLog(t('cookieLockHintDownload'));
@@ -694,6 +711,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     downloadSpeedEl.textContent = '- MB/s';
     downloadEtaEl.textContent = t('etaIdle');
     downloadPercentEl.textContent = '0%';
+    downloadCountEl.textContent = t('progressCount', { current: 0, total: 0 });
 
     updateQueueStats();
   }
@@ -710,6 +728,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (statusText) statusText.textContent = t('statusWorking');
     }
     videoStatusById.set(videoId, 'working');
+    downloadJobCurrent += 1;
+    downloadCountEl.textContent = t('progressCount', {
+      current: downloadJobCurrent,
+      total: downloadJobTotal,
+    });
     
     // Find the title matching the videoId
     const video = fetchedVideos.find(v => v.id === videoId);
