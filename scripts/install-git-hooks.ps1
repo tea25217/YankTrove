@@ -11,4 +11,4 @@ if (-not $repoRoot) {
 Set-Location $repoRoot
 git config core.hooksPath .githooks
 Write-Host "Enabled local secret scan hooks (core.hooksPath=.githooks)."
-Write-Host "Optional: install gitleaks for the full rule set — https://github.com/gitleaks/gitleaks"
+Write-Host "Optional: install Betterleaks for the full rule set — https://github.com/betterleaks/betterleaks"

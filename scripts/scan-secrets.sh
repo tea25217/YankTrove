@@ -3,7 +3,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-CONFIG="$ROOT/.gitleaks.toml"
+CONFIG="$ROOT/.betterleaks.toml"
 ZERO="0000000000000000000000000000000000000000"
 PATTERN='-----BEGIN [A-Z ]*PRIVATE KEY-----|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{20,}|xox[baprs]-[A-Za-z0-9-]{10,}'
 FORBIDDEN_PATH='(^|/)\.env($|\.)|(^|/)(credentials|secrets)\.json$|\.(pem|p12|pfx)$|(^|/)id_(rsa|ed25519)$'
@@ -45,24 +45,28 @@ scan_tree() {
 }
 
 fallback_notice() {
-  echo "gitleaks is not installed; running the built-in high-signal fallback." >&2
-  echo "Install from https://github.com/gitleaks/gitleaks for the full rule set." >&2
+  echo "betterleaks is not installed; running the built-in high-signal fallback." >&2
+  echo "Install from https://github.com/betterleaks/betterleaks for the full rule set." >&2
+}
+
+run_betterleaks() {
+  betterleaks git "$ROOT" -v --redact --config "$CONFIG" --exit-code 1 "$@"
 }
 
 mode="${1:-all}"
 
 case "$mode" in
   --ci|all)
-    if command -v gitleaks >/dev/null 2>&1; then
-      gitleaks detect --source "$ROOT" --verbose --redact --config "$CONFIG" --exit-code 1
+    if command -v betterleaks >/dev/null 2>&1; then
+      run_betterleaks
     else
       fallback_notice
       scan_tree
     fi
     ;;
   --staged)
-    if command -v gitleaks >/dev/null 2>&1; then
-      gitleaks protect --staged --verbose --redact --config "$CONFIG" --exit-code 1
+    if command -v betterleaks >/dev/null 2>&1; then
+      run_betterleaks --pre-commit --staged
     else
       fallback_notice
       scan_diff --cached
@@ -75,13 +79,13 @@ case "$mode" in
       if [[ "$local_sha" == "$ZERO" ]]; then
         continue
       fi
-      if command -v gitleaks >/dev/null 2>&1; then
+      if command -v betterleaks >/dev/null 2>&1; then
         if [[ "$remote_sha" == "$ZERO" ]]; then
-          if ! gitleaks detect --source "$ROOT" --verbose --redact --config "$CONFIG" --log-opts "$local_sha" --exit-code 1; then
+          if ! run_betterleaks --log-opts="$local_sha"; then
             failed=1
           fi
         else
-          if ! gitleaks detect --source "$ROOT" --verbose --redact --config "$CONFIG" --log-opts "$remote_sha..$local_sha" --exit-code 1; then
+          if ! run_betterleaks --log-opts="$remote_sha..$local_sha"; then
             failed=1
           fi
         fi

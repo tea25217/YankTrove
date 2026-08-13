@@ -211,7 +211,7 @@ git push origin v0.5.2
 
 ### シークレット / 個人情報スキャン
 
-`push` と pull request で [Gitleaks](https://github.com/gitleaks/gitleaks) が走り、API キー・秘密鍵・設定ファイル内のメール／電話番号などを検知すると失敗します。
+`push` と pull request で [Betterleaks](https://github.com/betterleaks/betterleaks) が走り、API キー・秘密鍵・設定ファイル内のメール／電話番号などを検知すると失敗します。
 
 ローカルの `git commit` / `git push` でも止める場合（初回のみ）:
 
@@ -219,7 +219,7 @@ git push origin v0.5.2
 powershell -File scripts/install-git-hooks.ps1
 ```
 
-フルルールで見るには [gitleaks](https://github.com/gitleaks/gitleaks) を PATH に入れてください。未導入でも、秘密鍵や GitHub トークンなど確度の高いパターンは hook 側のフォールバックで拒否します。
+フルルールで見るには [Betterleaks](https://github.com/betterleaks/betterleaks) を PATH に入れてください。未導入でも、秘密鍵や GitHub トークンなど確度の高いパターンは hook 側のフォールバックで拒否します。
 
 ---
 
