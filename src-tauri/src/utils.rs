@@ -26,11 +26,11 @@ pub fn sanitize_folder_name(name: &str) -> String {
         .to_string()
 }
 
-/// Folder name for one video: `{YYYY-MM-DD}_{sanitized title}`.
+/// Folder name for one video: `{YYYY-MM-DD-hh-mm}_{sanitized title}` (UTC).
 /// Title is truncated so the folder stays within common path limits.
-/// Missing dates become `unknown-date`. Unix timestamps are converted to UTC dates.
+/// Missing datetimes become `unknown-date`. Unix timestamps become UTC date+time.
 pub fn video_folder_name(title: &str, uploaded_at: Option<&str>) -> String {
-    let date = folder_date_prefix(uploaded_at);
+    let date = folder_datetime_prefix(uploaded_at);
 
     let mut name = sanitize_folder_name(title);
     if name.is_empty() {
@@ -54,21 +54,23 @@ pub fn video_folder_name(title: &str, uploaded_at: Option<&str>) -> String {
     }
 }
 
-fn folder_date_prefix(uploaded_at: Option<&str>) -> String {
+fn folder_datetime_prefix(uploaded_at: Option<&str>) -> String {
     let Some(raw) = uploaded_at.map(str::trim).filter(|value| !value.is_empty()) else {
         return "unknown-date".to_string();
     };
 
-    if raw.len() >= 10
-        && raw.as_bytes().get(4) == Some(&b'-')
-        && raw.as_bytes().get(7) == Some(&b'-')
-        && raw.as_bytes()[..10].iter().all(|b| b.is_ascii_digit() || *b == b'-')
-    {
-        return raw[..10].to_string();
+    // Already `YYYY-MM-DD-hh-mm` (possibly with trailing text).
+    if looks_like_ymd_hm(raw) {
+        return raw[..16].to_string();
+    }
+
+    // Date-only `YYYY-MM-DD` → midnight UTC so same-day sorts still group.
+    if looks_like_ymd(raw) {
+        return format!("{}-00-00", &raw[..10]);
     }
 
     if let Ok(timestamp) = raw.parse::<i64>() {
-        return unix_utc_ymd(timestamp);
+        return unix_utc_ymd_hm(timestamp);
     }
 
     let sanitized = sanitize_folder_name(raw).replace(' ', "-");
@@ -79,8 +81,29 @@ fn folder_date_prefix(uploaded_at: Option<&str>) -> String {
     }
 }
 
-fn unix_utc_ymd(timestamp: i64) -> String {
+fn looks_like_ymd(raw: &str) -> bool {
+    raw.len() >= 10
+        && raw.as_bytes().get(4) == Some(&b'-')
+        && raw.as_bytes().get(7) == Some(&b'-')
+        && raw.as_bytes()[..10]
+            .iter()
+            .all(|b| b.is_ascii_digit() || *b == b'-')
+}
+
+fn looks_like_ymd_hm(raw: &str) -> bool {
+    raw.len() >= 16
+        && looks_like_ymd(raw)
+        && raw.as_bytes().get(10) == Some(&b'-')
+        && raw.as_bytes().get(13) == Some(&b'-')
+        && raw.as_bytes()[11..13].iter().all(u8::is_ascii_digit)
+        && raw.as_bytes()[14..16].iter().all(u8::is_ascii_digit)
+}
+
+fn unix_utc_ymd_hm(timestamp: i64) -> String {
     let days = timestamp.div_euclid(86_400);
+    let tod = timestamp.rem_euclid(86_400) as u32;
+    let hh = tod / 3600;
+    let mm = (tod % 3600) / 60;
     let z = days + 719_468;
     let era = if z >= 0 { z } else { z - 146_096 }.div_euclid(146_097);
     let doe = (z - era * 146_097) as u32;
@@ -91,7 +114,34 @@ fn unix_utc_ymd(timestamp: i64) -> String {
     let d = doy - (153 * mp + 2) / 5 + 1;
     let m = if mp < 10 { mp + 3 } else { mp - 9 };
     let y = if m <= 2 { y + 1 } else { y };
-    format!("{y:04}-{m:02}-{d:02}")
+    format!("{y:04}-{m:02}-{d:02}-{hh:02}-{mm:02}")
+}
+
+#[cfg(test)]
+mod folder_name_tests {
+    use super::{folder_datetime_prefix, unix_utc_ymd_hm, video_folder_name};
+
+    #[test]
+    fn formats_unix_timestamp_with_utc_time() {
+        // 2024-01-02 03:04:05 UTC
+        assert_eq!(unix_utc_ymd_hm(1_704_164_645), "2024-01-02-03-04");
+    }
+
+    #[test]
+    fn folder_prefix_from_unix_and_date_only() {
+        assert_eq!(folder_datetime_prefix(Some("1704164645")), "2024-01-02-03-04");
+        assert_eq!(folder_datetime_prefix(Some("2024-01-02")), "2024-01-02-00-00");
+        assert_eq!(
+            folder_datetime_prefix(Some("2024-01-02-15-30")),
+            "2024-01-02-15-30"
+        );
+    }
+
+    #[test]
+    fn folder_name_includes_datetime() {
+        let name = video_folder_name("Hello World", Some("1704164645"));
+        assert_eq!(name, "2024-01-02-03-04_Hello World");
+    }
 }
 
 #[derive(Clone, Debug)]

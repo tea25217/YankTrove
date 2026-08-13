@@ -181,20 +181,30 @@ fn tab_label_from_entry(entry: &serde_json::Value) -> Option<&'static str> {
 }
 
 fn parse_uploaded_at(entry: &serde_json::Value) -> Option<String> {
+    // Prefer full timestamps so folder names can include hour/minute.
+    if let Some(timestamp) = entry["timestamp"]
+        .as_f64()
+        .or_else(|| entry["release_timestamp"].as_f64())
+        .map(|value| value as i64)
+    {
+        return Some(timestamp.to_string());
+    }
+
     if let Some(date) = entry["upload_date"].as_str() {
         if date.len() == 8 && date.chars().all(|c| c.is_ascii_digit()) {
-            return Some(format!("{}-{}-{}", &date[0..4], &date[4..6], &date[6..8]));
+            return Some(format!(
+                "{}-{}-{}-00-00",
+                &date[0..4],
+                &date[4..6],
+                &date[6..8]
+            ));
         }
         if !date.is_empty() {
             return Some(date.to_string());
         }
     }
 
-    let timestamp = entry["timestamp"]
-        .as_f64()
-        .or_else(|| entry["release_timestamp"].as_f64())
-        .map(|value| value as i64)?;
-    Some(timestamp.to_string())
+    None
 }
 
 fn parse_video_language(entry: &serde_json::Value) -> Option<String> {
