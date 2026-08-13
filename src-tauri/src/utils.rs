@@ -93,16 +93,6 @@ pub fn detect_js_runtime(app: &tauri::AppHandle) -> JsRuntimeInfo {
     }
 }
 
-pub fn js_runtime_setup_message() -> String {
-    "YouTube 取得には JavaScript ランタイム（Deno 推奨）が必要です。\n\n\
-    以下のいずれかで Deno をインストールしてください:\n\
-    1. winget install DenoLand.Deno\n\
-    2. https://docs.deno.com/runtime/getting_started/installation/\n\n\
-    インストール後、アプリを再起動してください。\n\
-    参考: https://github.com/yt-dlp/yt-dlp/wiki/EJS"
-        .to_string()
-}
-
 pub fn is_js_challenge_error(message: &str) -> bool {
     let lower = message.to_lowercase();
     lower.contains("n challenge solving failed")

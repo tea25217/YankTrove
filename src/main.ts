@@ -2,6 +2,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { open } from '@tauri-apps/plugin-dialog';
 import { VideoInfo, ChannelInfo, ProgressPayload } from './types';
+import { initI18n, locale, t } from './i18n';
 
 // State management variables
 let fetchedVideos: VideoInfo[] = [];
@@ -13,6 +14,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   const appEl = document.getElementById('app');
   if (!appEl) return;
 
+  initI18n();
+
   // Initialize UI structure
   appEl.innerHTML = `
     <header>
@@ -20,67 +23,67 @@ document.addEventListener('DOMContentLoaded', async () => {
         <h1><span class="logo-dot"></span>Yank Trove</h1>
       </div>
       <div class="status-badges">
-        <div id="js-runtime-status" class="status-badge warn">JS Runtime: 検証中...</div>
-        <div id="ffmpeg-status" class="status-badge warn">FFmpeg: 検証中...</div>
+        <div id="js-runtime-status" class="status-badge warn">${t('jsRuntimeChecking')}</div>
+        <div id="ffmpeg-status" class="status-badge warn">${t('ffmpegChecking')}</div>
       </div>
     </header>
     <div class="main-container">
       <div class="left-pane">
         <div class="form-group">
-          <label for="channel-url">YouTube チャンネル / プレイリスト URL</label>
+          <label for="channel-url">${t('urlLabel')}</label>
           <input type="text" id="channel-url" placeholder="https://www.youtube.com/..." />
         </div>
         
         <div class="form-group">
-          <label for="cookies-browser">使用するブラウザのクッキー</label>
+          <label for="cookies-browser">${t('cookieLabel')}</label>
           <select id="cookies-browser">
-            <option value="none">使用しない (公開動画のみ)</option>
-            <option value="firefox">Firefox（推奨）</option>
-            <option value="chrome">Google Chrome</option>
-            <option value="edge">Microsoft Edge</option>
-            <option value="safari">Safari</option>
+            <option value="none">${t('cookieNone')}</option>
+            <option value="firefox">${t('cookieFirefox')}</option>
+            <option value="chrome">${t('cookieChrome')}</option>
+            <option value="edge">${t('cookieEdge')}</option>
+            <option value="safari">${t('cookieSafari')}</option>
           </select>
           <div id="cookie-lock-warning" class="warning-box">
-            ⚠️ Chrome / Edge が起動中だと、クッキーを読み取れずリスト取得やダウンロードに失敗することがあります。Firefox を使うか、対象ブラウザを完全終了してから再試行してください。
+            ${t('cookieLockWarning')}
           </div>
         </div>
 
         <div class="form-group">
-          <label>保存先フォルダ</label>
+          <label>${t('saveDirLabel')}</label>
           <div class="input-wrapper">
-            <input type="text" id="download-dir" readonly placeholder="デフォルト: ダウンロード/YankTrove" />
-            <button type="button" id="browse-dir" class="browse-btn">選択</button>
+            <input type="text" id="download-dir" readonly placeholder="${t('saveDirPlaceholder')}" />
+            <button type="button" id="browse-dir" class="browse-btn">${t('browseDir')}</button>
           </div>
         </div>
 
         <div class="checkbox-card">
-          <h3>取得データ選択</h3>
+          <h3>${t('dataSelect')}</h3>
           <label class="checkbox-option">
-            <input type="checkbox" id="opt-metadata" checked /> メタデータ (JSON形式)
+            <input type="checkbox" id="opt-metadata" checked /> ${t('optMetadata')}
           </label>
           <label class="checkbox-option">
-            <input type="checkbox" id="opt-chat" checked /> チャットログ (JSON形式)
+            <input type="checkbox" id="opt-chat" checked /> ${t('optChat')}
           </label>
           <label class="checkbox-option">
-            <input type="checkbox" id="opt-description" checked /> 概要欄テキスト (.txt)
+            <input type="checkbox" id="opt-description" checked /> ${t('optDescription')}
           </label>
           <label class="checkbox-option">
-            <input type="checkbox" id="opt-subtitles" checked /> 字幕ファイル (.vtt)
+            <input type="checkbox" id="opt-subtitles" checked /> ${t('optSubtitles')}
           </label>
           <label class="checkbox-option">
-            <input type="checkbox" id="opt-thumbnail" checked /> サムネイル画像 (JPG)
+            <input type="checkbox" id="opt-thumbnail" checked /> ${t('optThumbnail')}
           </label>
           <label class="checkbox-option">
-            <input type="checkbox" id="opt-video" /> 動画本体 (MP4)
+            <input type="checkbox" id="opt-video" /> ${t('optVideo')}
           </label>
           <label class="checkbox-option">
-            <input type="checkbox" id="opt-audio" /> 音声のみ抽出 (MP3)
+            <input type="checkbox" id="opt-audio" /> ${t('optAudio')}
           </label>
           <div id="ffmpeg-warning" class="warning-box">
-            ⚠️ 動画の保存、または音声の抽出には <strong>FFmpeg</strong> が必要です。未検出の場合は処理が失敗するか画質が制限される場合があります。
+            ${t('ffmpegWarning')}
           </div>
           <div id="audio-format-group" class="audio-format-group">
-            <label for="audio-format">形式:</label>
+            <label for="audio-format">${t('audioFormat')}</label>
             <select id="audio-format">
               <option value="mp3">MP3</option>
               <option value="m4a">M4A</option>
@@ -89,37 +92,37 @@ document.addEventListener('DOMContentLoaded', async () => {
         </div>
 
         <div class="form-group">
-          <label for="delay-seconds">連続取得時の待機時間 (秒) - IPブロック対策</label>
+          <label for="delay-seconds">${t('delayLabel')}</label>
           <input type="number" id="delay-seconds" min="0" max="60" value="5" style="padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-color); outline: none;" />
         </div>
 
-        <button type="button" id="fetch-list-btn" class="btn btn-secondary">動画リストを取得</button>
+        <button type="button" id="fetch-list-btn" class="btn btn-secondary">${t('fetchList')}</button>
       </div>
       
       <div class="right-pane">
         <div class="queue-card">
           <div class="queue-header">
-            <span class="queue-title" id="channel-title-display">動画キュー</span>
-            <span class="queue-stats" id="queue-stats-display">選択: 0 / 0 件</span>
+            <span class="queue-title" id="channel-title-display">${t('queueTitle')}</span>
+            <span class="queue-stats" id="queue-stats-display">${t('queueStats', { selected: 0, total: 0 })}</span>
           </div>
           <div class="video-list-container" id="video-list">
             <div style="padding: 20px; text-align: center; color: var(--text-secondary); font-size: 13px;">
-              URLを入力し、「動画リストを取得」をクリックしてください。
+              ${t('queueEmpty')}
             </div>
           </div>
         </div>
 
         <div class="action-section">
-          <button type="button" id="start-btn" class="btn btn-primary" disabled>取得開始</button>
-          <button type="button" id="cancel-btn" class="btn btn-danger">キャンセル</button>
+          <button type="button" id="start-btn" class="btn btn-primary" disabled>${t('start')}</button>
+          <button type="button" id="cancel-btn" class="btn btn-danger">${t('cancel')}</button>
         </div>
 
         <div class="monitor-card" id="monitor-card" style="display: none;">
           <div class="progress-header">
-            <span id="active-video-title" style="font-weight: 600; max-width: 50%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">動画処理中...</span>
+            <span id="active-video-title" style="font-weight: 600; max-width: 50%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${t('processingVideo')}</span>
             <div class="progress-meta">
               <span id="download-speed">- MB/s</span>
-              <span id="download-eta">残り: -</span>
+              <span id="download-eta">${t('etaIdle')}</span>
               <span id="download-percent" style="color: var(--primary-color); font-weight: 700;">0%</span>
             </div>
           </div>
@@ -130,10 +133,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         <div class="console-card">
           <div class="console-header">
-            <span>処理ログ</span>
-            <span id="console-status" style="font-weight: normal; color: var(--text-secondary);">待機中</span>
+            <span>${t('logTitle')}</span>
+            <span id="console-status" style="font-weight: normal; color: var(--text-secondary);">${t('statusIdle')}</span>
           </div>
-          <div class="console-body" id="console-log">システムを起動しました。</div>
+          <div class="console-body" id="console-log">${t('startedLog')}</div>
         </div>
       </div>
     </div>
@@ -235,29 +238,26 @@ document.addEventListener('DOMContentLoaded', async () => {
       const runtimeLabel = env.js_runtime_name
         ? env.js_runtime_name.charAt(0).toUpperCase() + env.js_runtime_name.slice(1)
         : 'Runtime';
-      jsRuntimeStatusBadge.textContent = `JS Runtime: ${runtimeLabel} 検出済み`;
+      jsRuntimeStatusBadge.textContent = t('jsRuntimeFound', { name: runtimeLabel });
       jsRuntimeStatusBadge.className = 'status-badge ok';
-      addLog(`${runtimeLabel} の検出に成功しました。`);
+      addLog(t('jsRuntimeFoundLog', { name: runtimeLabel }));
     } else {
-      jsRuntimeStatusBadge.textContent = 'JS Runtime: 未検出';
+      jsRuntimeStatusBadge.textContent = t('jsRuntimeMissing');
       jsRuntimeStatusBadge.className = 'status-badge warn';
-      addLog(
-        'JavaScript ランタイム（Deno 推奨）が検出されませんでした。YouTube 取得が失敗する可能性があります。`winget install DenoLand.Deno` でインストールできます。',
-        true
-      );
+      addLog(t('jsRuntimeMissingLog'), true);
     }
 
     if (env.ffmpeg_installed) {
-      ffmpegStatusBadge.textContent = 'FFmpeg: 検出済み';
+      ffmpegStatusBadge.textContent = t('ffmpegFound');
       ffmpegStatusBadge.className = 'status-badge ok';
-      addLog('FFmpeg の検出に成功しました。');
+      addLog(t('ffmpegFoundLog'));
     } else {
-      ffmpegStatusBadge.textContent = 'FFmpeg: 未検出';
+      ffmpegStatusBadge.textContent = t('ffmpegMissing');
       ffmpegStatusBadge.className = 'status-badge warn';
-      addLog('FFmpeg がシステム上に検出されませんでした。動画の結合や音声抽出が失敗する可能性があります。', true);
+      addLog(t('ffmpegMissingLog'), true);
     }
   } catch (err) {
-    addLog(`環境チェック中にエラーが発生しました: ${err}`, true);
+    addLog(t('envCheckError', { error: String(err) }), true);
   }
 
   // Browse Directory dialog
@@ -266,15 +266,15 @@ document.addEventListener('DOMContentLoaded', async () => {
       const selected = await open({
         directory: true,
         multiple: false,
-        title: '保存先フォルダの選択',
+        title: t('browseDirTitle'),
       });
       if (selected && typeof selected === 'string') {
         selectedDir = selected;
         downloadDirInput.value = selected;
-        addLog(`保存先フォルダを変更しました: ${selected}`);
+        addLog(t('dirChanged', { path: selected }));
       }
     } catch (err) {
-      addLog(`フォルダ選択中にエラーが発生しました: ${err}`, true);
+      addLog(t('browseDirError', { error: String(err) }), true);
     }
   });
 
@@ -282,38 +282,39 @@ document.addEventListener('DOMContentLoaded', async () => {
   fetchListBtn.addEventListener('click', async () => {
     const url = channelUrlInput.value.trim();
     if (!url) {
-      addLog('エラー: チャンネルまたはプレイリストのURLを入力してください。', true);
+      addLog(t('urlRequired'), true);
       return;
     }
 
     fetchListBtn.disabled = true;
-    fetchListBtn.textContent = 'リスト取得中...';
-    consoleStatusEl.textContent = '取得中';
-    addLog(`動画リストを取得しています: ${url}`);
+    fetchListBtn.textContent = t('fetchingList');
+    consoleStatusEl.textContent = t('statusFetching');
+    addLog(t('fetchingListLog', { url }));
     if (isChromiumCookieBrowser(cookiesBrowserSelect.value)) {
-      addLog('Chrome / Edge が起動中だとクッキー読み取りに失敗することがあります。失敗したら Firefox を使うか、ブラウザを完全終了して再試行してください。');
+      addLog(t('cookieLockHint'));
     }
     
-    videoListEl.innerHTML = `<div style="padding: 20px; text-align: center; color: var(--text-secondary);">動画情報を解析中...</div>`;
+    videoListEl.innerHTML = `<div style="padding: 20px; text-align: center; color: var(--text-secondary);">${t('parsingVideos')}</div>`;
 
     try {
       const info: ChannelInfo = await invoke('get_channel_videos', {
         url,
         cookiesBrowser: cookiesBrowserSelect.value,
+        locale: locale(),
       });
 
       fetchedVideos = info.videos;
       currentChannelTitle = info.channel_title;
-      channelTitleDisplay.textContent = `${info.channel_title} - アーカイブキュー`;
+      channelTitleDisplay.textContent = t('queueTitleWithChannel', { channel: info.channel_title });
       
       if (fetchedVideos.length === 0) {
-        videoListEl.innerHTML = `<div style="padding: 20px; text-align: center; color: var(--text-secondary);">アーカイブ動画が見つかりませんでした。公開設定やクッキー設定を確認してください。</div>`;
+        videoListEl.innerHTML = `<div style="padding: 20px; text-align: center; color: var(--text-secondary);">${t('noArchives')}</div>`;
         startBtn.disabled = true;
-        addLog('動画リストは空でした。', true);
+        addLog(t('listEmpty'), true);
       } else {
         renderQueue();
         startBtn.disabled = false;
-        addLog(`リストの取得に成功しました。動画数: ${fetchedVideos.length}`);
+        addLog(t('listSuccess', { count: fetchedVideos.length }));
       }
     } catch (err) {
       const errText = String(err);
@@ -324,14 +325,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       errorBox.style.whiteSpace = 'pre-wrap';
       errorBox.style.fontSize = '13px';
       errorBox.style.lineHeight = '1.5';
-      errorBox.textContent = `リストの取得に失敗しました。\n\n${errText}`;
+      errorBox.textContent = `${t('listFailed')}\n\n${errText}`;
       videoListEl.appendChild(errorBox);
       startBtn.disabled = true;
-      addLog(`リストの取得に失敗しました: ${errText}`, true);
+      addLog(t('listFailedLog', { error: errText }), true);
     } finally {
       fetchListBtn.disabled = false;
-      fetchListBtn.textContent = '動画リストを取得';
-      consoleStatusEl.textContent = '待機中';
+      fetchListBtn.textContent = t('fetchList');
+      consoleStatusEl.textContent = t('statusIdle');
     }
   });
 
@@ -346,7 +347,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     selectAllRow.style.background = '#f8fafc';
     selectAllRow.innerHTML = `
       <input type="checkbox" id="select-all-videos" checked />
-      <span class="video-title-text" style="font-weight: 600;">すべて選択/解除</span>
+      <span class="video-title-text" style="font-weight: 600;">${t('selectAll')}</span>
     `;
     videoListEl.appendChild(selectAllRow);
 
@@ -357,7 +358,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       row.innerHTML = `
         <input type="checkbox" class="video-select-cb" data-id="${video.id}" checked />
         <span class="video-title-text" title="${video.title}">${video.title}</span>
-        <span class="video-status-text">待機中</span>
+        <span class="video-status-text">${t('statusWaiting')}</span>
       `;
       videoListEl.appendChild(row);
     });
@@ -387,7 +388,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   function updateQueueStats() {
     const itemCheckboxes = document.querySelectorAll('.video-select-cb') as NodeListOf<HTMLInputElement>;
     const checkedCount = Array.from(itemCheckboxes).filter(c => c.checked).length;
-    queueStatsDisplay.textContent = `選択: ${checkedCount} / ${fetchedVideos.length} 件`;
+    queueStatsDisplay.textContent = t('queueStats', { selected: checkedCount, total: fetchedVideos.length });
     
     if (checkedCount > 0 && !isDownloading) {
       startBtn.disabled = false;
@@ -411,7 +412,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   startBtn.addEventListener('click', async () => {
     const selectedVideos = getSelectedVideos();
     if (selectedVideos.length === 0) {
-      addLog('エラー: キューから取得対象の動画を1つ以上選択してください。', true);
+      addLog(t('noVideosSelected'), true);
       return;
     }
 
@@ -443,10 +444,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     (document.getElementById('select-all-videos') as HTMLInputElement).disabled = true;
 
     monitorCardEl.style.display = 'block';
-    consoleStatusEl.textContent = 'ダウンロード中';
-    addLog(`ダウンロード処理を開始します。総対象数: ${selectedVideos.length}`);
+    consoleStatusEl.textContent = t('statusDownloading');
+    addLog(t('downloadStarted', { count: selectedVideos.length }));
     if (isChromiumCookieBrowser(cookiesBrowserSelect.value)) {
-      addLog('Chrome / Edge のクッキーを使用します。失敗した場合は Firefox に切り替えるか、ブラウザを完全終了して再試行してください。');
+      addLog(t('cookieLockHintDownload'));
     }
 
     try {
@@ -456,16 +457,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         channelTitle: currentChannelTitle,
         delaySeconds,
         customDir: selectedDir,
+        locale: locale(),
       });
-      addLog('すべての動画処理が完了しました。');
-      consoleStatusEl.textContent = '完了';
+      addLog(t('allDone'));
+      consoleStatusEl.textContent = t('statusDone');
     } catch (err) {
       if (err === 'Cancelled') {
-        addLog('ダウンロードがユーザーによってキャンセルされました。', true);
-        consoleStatusEl.textContent = 'キャンセル済み';
+        addLog(t('downloadCancelled'), true);
+        consoleStatusEl.textContent = t('statusCancelled');
       } else {
-        addLog(`ダウンロードプロセス中にエラーが発生しました: ${err}`, true);
-        consoleStatusEl.textContent = 'エラー';
+        addLog(t('downloadError', { error: String(err) }), true);
+        consoleStatusEl.textContent = t('statusError');
       }
     } finally {
       resetUiState();
@@ -475,13 +477,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Cancel download button click handler
   cancelBtn.addEventListener('click', async () => {
     cancelBtn.disabled = true;
-    cancelBtn.textContent = 'キャンセル中...';
-    addLog('ダウンロードの中断を要求中...');
+    cancelBtn.textContent = t('cancelling');
+    addLog(t('cancelRequested'));
     
     try {
       await invoke('cancel_downloads');
     } catch (err) {
-      addLog(`ダウンロードキャンセル中にエラーが発生しました: ${err}`, true);
+      addLog(t('cancelError', { error: String(err) }), true);
     }
   });
 
@@ -491,7 +493,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     startBtn.disabled = false;
     cancelBtn.style.display = 'none';
     cancelBtn.disabled = false;
-    cancelBtn.textContent = 'キャンセル';
+    cancelBtn.textContent = t('cancel');
     fetchListBtn.disabled = false;
     cookiesBrowserSelect.disabled = false;
     channelUrlInput.disabled = false;
@@ -506,7 +508,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     progressBarEl.className = 'progress-bar-fill';
     activeVideoTitleEl.textContent = '-';
     downloadSpeedEl.textContent = '- MB/s';
-    downloadEtaEl.textContent = '残り: -';
+    downloadEtaEl.textContent = t('etaIdle');
     downloadPercentEl.textContent = '0%';
 
     updateQueueStats();
@@ -521,14 +523,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (row) {
       row.className = 'video-row selected';
       const statusText = row.querySelector('.video-status-text');
-      if (statusText) statusText.textContent = '処理中...';
+      if (statusText) statusText.textContent = t('statusWorking');
     }
     
     // Find the title matching the videoId
     const video = fetchedVideos.find(v => v.id === videoId);
     if (video) {
       activeVideoTitleEl.textContent = video.title;
-      addLog(`動画のダウンロードを開始しました: ${video.title}`);
+      addLog(t('downloadStartLog', { title: video.title }));
     }
     
     // Reset progress bar for next item
@@ -536,7 +538,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     progressBarEl.className = 'progress-bar-fill';
     downloadPercentEl.textContent = '0%';
     downloadSpeedEl.textContent = '- MB/s';
-    downloadEtaEl.textContent = '残り: -';
+    downloadEtaEl.textContent = t('etaIdle');
   });
 
   // Highlight row on video completion
@@ -546,12 +548,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (row) {
       row.className = 'video-row completed';
       const statusText = row.querySelector('.video-status-text');
-      if (statusText) statusText.textContent = '完了';
+      if (statusText) statusText.textContent = t('statusComplete');
     }
     
     const video = fetchedVideos.find(v => v.id === videoId);
     if (video) {
-      addLog(`動画のダウンロードが完了しました: ${video.title}`);
+      addLog(t('downloadFinishLog', { title: video.title }));
     }
 
     progressBarEl.className = 'progress-bar-fill finished';
@@ -565,7 +567,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     progressBarEl.style.width = `${progress.percentage}%`;
     downloadPercentEl.textContent = `${Math.floor(progress.percentage)}%`;
     if (progress.speed) downloadSpeedEl.textContent = progress.speed;
-    if (progress.eta) downloadEtaEl.textContent = `残り: ${progress.eta}`;
+    if (progress.eta) downloadEtaEl.textContent = t('etaRemaining', { eta: progress.eta });
   });
 
   // Append raw download stdout/stderr line logs

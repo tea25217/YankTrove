@@ -4,11 +4,13 @@ use tauri::{Emitter, Manager};
 
 mod utils;
 mod command_runner;
+mod i18n;
 
 use crate::utils::{
     is_ffmpeg_installed, detect_js_runtime, cleanup_incomplete_files, sanitize_folder_name,
     video_folder_name,
 };
+use crate::i18n::UiLocale;
 use crate::command_runner::{
     AppState, DownloadOptions, VideoDownloadTarget, ChannelInfo, ProgressPayload,
     fetch_channel_videos, download_single_video,
@@ -36,8 +38,9 @@ async fn get_channel_videos(
     app: tauri::AppHandle,
     url: String,
     cookies_browser: String,
+    locale: String,
 ) -> Result<ChannelInfo, String> {
-    fetch_channel_videos(app, &url, &cookies_browser).await
+    fetch_channel_videos(app, &url, &cookies_browser, UiLocale::parse(&locale)).await
 }
 
 #[tauri::command]
@@ -49,7 +52,9 @@ async fn start_download_archive(
     channel_title: String,
     delay_seconds: u64,
     custom_dir: Option<String>,
+    locale: String,
 ) -> Result<(), String> {
+    let ui_locale = UiLocale::parse(&locale);
     // Reset cancellation flag
     state.is_cancelled.store(false, Ordering::SeqCst);
 
@@ -88,6 +93,7 @@ async fn start_download_archive(
             &video.url,
             &options,
             &video_dir,
+            ui_locale,
         )
         .await
         {
@@ -104,10 +110,7 @@ async fn start_download_archive(
                         speed: None,
                         eta: None,
                         status: "Cancelled".to_string(),
-                        log: Some(format!(
-                            "Download cancelled and files cleaned up for ID: {}",
-                            video.id
-                        )),
+                        log: Some(crate::i18n::download_cancelled_log(&video.id, ui_locale)),
                     });
                     return Err("Cancelled".to_string());
                 } else {
@@ -117,7 +120,7 @@ async fn start_download_archive(
                         speed: None,
                         eta: None,
                         status: "Error".to_string(),
-                        log: Some(format!("[ERROR] Video ID {} failed: {}", video.id, e)),
+                        log: Some(crate::i18n::video_failed_log(&video.id, &e, ui_locale)),
                     });
                 }
             }
@@ -131,7 +134,7 @@ async fn start_download_archive(
                 speed: None,
                 eta: None,
                 status: "Waiting".to_string(),
-                log: Some(format!("Waiting {} seconds before processing next video...", delay_seconds)),
+                log: Some(crate::i18n::waiting_before_next(delay_seconds, ui_locale)),
             });
             tokio::time::sleep(tokio::time::Duration::from_secs(delay_seconds)).await;
         }

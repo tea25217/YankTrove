@@ -5,7 +5,11 @@ use tokio::sync::Mutex;
 use tauri::Emitter;
 use tauri_plugin_shell::process::{CommandChild, CommandEvent};
 
-use crate::utils::{spawn_yt_dlp, is_js_challenge_error, js_runtime_setup_message};
+use crate::utils::{spawn_yt_dlp, is_js_challenge_error};
+use crate::i18n::{
+    UiLocale, channel_not_found_error, cookie_extraction_error_message, js_runtime_setup_message,
+    video_list_unavailable, ytdlp_fetch_error,
+};
 
 static PROGRESS_REGEX: LazyLock<regex::Regex> = LazyLock::new(|| {
     regex::Regex::new(r"\[download\]\s+(\d+\.\d+)%").unwrap()
@@ -112,44 +116,6 @@ fn is_cookie_extraction_error(err_summary: &str) -> bool {
         || lower.contains("could not copy")
 }
 
-fn cookie_extraction_error_message(browser: &str) -> String {
-    let browser_name = match browser {
-        "chrome" => "Google Chrome",
-        "edge" => "Microsoft Edge",
-        "firefox" => "Firefox",
-        "safari" => "Safari",
-        _ => browser,
-    };
-
-    if browser == "chrome" || browser == "edge" {
-        return format!(
-            "ブラウザ（{}）のクッキーを読み取れませんでした。起動中だと Cookie データベースがロックされます。\n\n\
-            次のいずれかを試してください:\n\
-            1. Firefox で YouTube にログインし、「使用するブラウザのクッキー」を Firefox に切り替える（推奨）\n\
-            2. {} を完全に終了してから再試行する（タスクマネージャーでバックグラウンドプロセスも終了）\n\n\
-            参考: https://github.com/yt-dlp/yt-dlp/issues/7271",
-            browser_name, browser_name
-        );
-    }
-
-    format!(
-        "ブラウザ（{}）のクッキーを読み取れませんでした。\n\n\
-        メン限動画を取得するには、以下のいずれかをお試しください:\n\
-        1. {} を完全に終了してから再試行（タスクマネージャーでバックグラウンドプロセスも終了）\n\
-        2. 別のブラウザ（Firefox 等）で YouTube にログインし、そのブラウザを選択\n\n\
-        参考: https://github.com/yt-dlp/yt-dlp/issues/7271",
-        browser_name, browser_name
-    )
-}
-
-fn channel_not_found_error(url: &str, err_summary: &str) -> String {
-    format!(
-        "チャンネルが見つかりませんでした。\nURLを確認してください: {}\n詳細: {}",
-        url,
-        err_summary.lines().last().unwrap_or("")
-    )
-}
-
 fn entry_page_url(entry: &serde_json::Value) -> Option<String> {
     entry["url"]
         .as_str()
@@ -242,6 +208,7 @@ async fn run_flat_playlist_json(
     app: &tauri::AppHandle,
     url: &str,
     cookies_browser: &str,
+    locale: UiLocale,
 ) -> Result<serde_json::Value, String> {
     let mut args = vec![
         "--ignore-errors".to_string(),
@@ -274,16 +241,16 @@ async fn run_flat_playlist_json(
                 if terminated_with_error {
                     let err_summary = stderr_messages.join("\n");
                     if cookies_browser != "none" && is_cookie_extraction_error(&err_summary) {
-                        return Err(cookie_extraction_error_message(cookies_browser));
+                        return Err(cookie_extraction_error_message(cookies_browser, locale));
                     }
                     if err_summary.contains("404")
                         || err_summary.contains("Not Found")
                         || err_summary.contains("Requested entity was not found")
                     {
-                        return Err(channel_not_found_error(url, &err_summary));
+                        return Err(channel_not_found_error(url, &err_summary, locale));
                     }
                     if json_buffer.is_empty() || json_buffer.trim_ascii() == b"null" {
-                        return Err(format!("yt-dlp 取得エラー:\n{}", err_summary));
+                        return Err(ytdlp_fetch_error(&err_summary, locale));
                     }
                 }
             }
@@ -296,18 +263,15 @@ async fn run_flat_playlist_json(
     if trimmed.is_empty() || trimmed == "null" {
         let err_summary = stderr_messages.join("\n");
         if cookies_browser != "none" && is_cookie_extraction_error(&err_summary) {
-            return Err(cookie_extraction_error_message(cookies_browser));
+            return Err(cookie_extraction_error_message(cookies_browser, locale));
         }
         if err_summary.contains("404")
             || err_summary.contains("Not Found")
             || err_summary.contains("Requested entity was not found")
         {
-            return Err(channel_not_found_error(url, &err_summary));
+            return Err(channel_not_found_error(url, &err_summary, locale));
         }
-        return Err(format!(
-            "動画リストを取得できませんでした。URLまたはクッキー設定を確認してください。\n詳細:\n{}",
-            err_summary
-        ));
+        return Err(video_list_unavailable(&err_summary, locale));
     }
 
     let json_str = String::from_utf8(json_buffer)
@@ -321,6 +285,7 @@ async fn collect_videos_from_playlist_json(
     parsed: &serde_json::Value,
     cookies_browser: &str,
     title_prefix: Option<&str>,
+    locale: UiLocale,
 ) -> Result<Vec<VideoInfo>, String> {
     let entries = parsed["entries"]
         .as_array()
@@ -338,7 +303,7 @@ async fn collect_videos_from_playlist_json(
                 continue;
             };
             let tab_label = tab_label_from_entry(&tab_entry);
-            let tab_json = run_flat_playlist_json(app, &tab_url, cookies_browser).await?;
+            let tab_json = run_flat_playlist_json(app, &tab_url, cookies_browser, locale).await?;
             let tab_entries = tab_json["entries"]
                 .as_array()
                 .cloned()
@@ -364,11 +329,12 @@ pub async fn fetch_channel_videos(
     app: tauri::AppHandle,
     url: &str,
     cookies_browser: &str,
+    locale: UiLocale,
 ) -> Result<ChannelInfo, String> {
-    let parsed = run_flat_playlist_json(&app, url, cookies_browser).await?;
+    let parsed = run_flat_playlist_json(&app, url, cookies_browser, locale).await?;
 
     if parsed.is_null() {
-        return Err(channel_not_found_error(url, "null response"));
+        return Err(channel_not_found_error(url, "null response", locale));
     }
 
     let channel_title = parsed["title"]
@@ -378,7 +344,7 @@ pub async fn fetch_channel_videos(
         .to_string();
 
     let videos = dedupe_videos(
-        collect_videos_from_playlist_json(&app, &parsed, cookies_browser, None).await?,
+        collect_videos_from_playlist_json(&app, &parsed, cookies_browser, None, locale).await?,
     );
 
     Ok(ChannelInfo {
@@ -441,6 +407,7 @@ pub async fn download_single_video(
     video_url: &str,
     options: &DownloadOptions,
     output_dir: &Path,
+    locale: UiLocale,
 ) -> Result<(), String> {
     // Save current video ID and target folder in AppState for cancellation cleanup
     {
@@ -604,13 +571,13 @@ pub async fn download_single_video(
                     if options.cookies_browser != "none"
                         && is_cookie_extraction_error(&last_err_msg)
                     {
-                        return Err(cookie_extraction_error_message(&options.cookies_browser));
+                        return Err(cookie_extraction_error_message(&options.cookies_browser, locale));
                     }
                     if js_challenge_failed || is_js_challenge_error(&last_err_msg) {
-                        return Err(js_runtime_setup_message());
+                        return Err(js_runtime_setup_message(locale));
                     }
                     if error_occurred {
-                        return Err(format!("yt-dlp failed: {}", last_err_msg));
+                        return Err(ytdlp_fetch_error(&last_err_msg, locale));
                     }
                 }
             }
