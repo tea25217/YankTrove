@@ -27,12 +27,31 @@ pub fn cookie_extraction_error_message(browser: &str, locale: UiLocale, ytdlp_de
         _ => browser,
     };
     let detail = truncate_ytdlp_detail(ytdlp_detail);
+    let chromium = browser == "chrome" || browser == "edge";
+    let dpapi = is_dpapi_cookie_error(ytdlp_detail);
+    let db_lock = is_cookie_db_lock_error(ytdlp_detail);
 
-    let body = if browser == "chrome" || browser == "edge" {
+    let body = if chromium && dpapi {
         if locale.is_ja() {
             format!(
-                "ブラウザ（{}）のクッキーを読み取れませんでした。\n\
-                起動中のロック以外に、新しい Chrome / Edge では終了後も外部プログラムが Cookie を復号できないことがあります。\n\n\
+                "ブラウザ（{}）のクッキーを復号できませんでした。\n\
+                Windows の新しい Chrome / Edge は Cookie をアプリ専用に暗号化するため、ブラウザを終了しても Yank Trove からは読めません。\n\n\
+                対処: Firefox で YouTube にログインし、「使用するブラウザのクッキー」を Firefox に切り替えてください。\n\n\
+                参考: https://github.com/yt-dlp/yt-dlp/issues/10927",
+                browser_name
+            )
+        } else {
+            format!(
+                "Could not decrypt cookies from {browser_name}.\n\
+                Newer Chrome / Edge on Windows encrypt cookies for the browser only, so quitting it does not help.\n\n\
+                Workaround: sign in to YouTube in Firefox and select Firefox as the cookie source.\n\n\
+                See: https://github.com/yt-dlp/yt-dlp/issues/10927"
+            )
+        }
+    } else if chromium && db_lock {
+        if locale.is_ja() {
+            format!(
+                "ブラウザ（{}）のクッキーを読み取れませんでした。起動中だと Cookie データベースがロックされます。\n\n\
                 次のいずれかを試してください:\n\
                 1. Firefox で YouTube にログインし、「使用するブラウザのクッキー」を Firefox に切り替える（推奨）\n\
                 2. {} を完全に終了してから再試行する（タスクマネージャーでバックグラウンドプロセスも終了）\n\n\
@@ -41,12 +60,28 @@ pub fn cookie_extraction_error_message(browser: &str, locale: UiLocale, ytdlp_de
             )
         } else {
             format!(
-                "Could not read cookies from {browser_name}.\n\
-                Besides a lock while the browser is running, newer Chrome / Edge may block decryption even after quit.\n\n\
+                "Could not read cookies from {browser_name}. Chromium locks the cookie database while it is running.\n\n\
                 Try one of the following:\n\
                 1. Sign in to YouTube in Firefox and select Firefox as the cookie source (recommended)\n\
                 2. Fully quit {browser_name} (including background processes in Task Manager) and retry\n\n\
                 See: https://github.com/yt-dlp/yt-dlp/issues/7271"
+            )
+        }
+    } else if chromium {
+        if locale.is_ja() {
+            format!(
+                "ブラウザ（{}）のクッキーを読み取れませんでした。\n\
+                Windows の Chrome / Edge は Cookie を暗号化するため、終了しても読めないことがあります。\n\n\
+                対処: Firefox で YouTube にログインし、「使用するブラウザのクッキー」を Firefox に切り替えてください。\n\n\
+                参考: https://github.com/yt-dlp/yt-dlp/issues/10927",
+                browser_name
+            )
+        } else {
+            format!(
+                "Could not read cookies from {browser_name}.\n\
+                Chrome / Edge on Windows may encrypt cookies so they stay unreadable even after quit.\n\n\
+                Workaround: sign in to YouTube in Firefox and select Firefox as the cookie source.\n\n\
+                See: https://github.com/yt-dlp/yt-dlp/issues/10927"
             )
         }
     } else if locale.is_ja() {
@@ -77,12 +112,24 @@ pub fn cookie_extraction_error_message(browser: &str, locale: UiLocale, ytdlp_de
     }
 }
 
+fn is_dpapi_cookie_error(detail: &str) -> bool {
+    let lower = detail.to_lowercase();
+    lower.contains("dpapi") || lower.contains("10927") || lower.contains("app-bound")
+}
+
+fn is_cookie_db_lock_error(detail: &str) -> bool {
+    let lower = detail.to_lowercase();
+    lower.contains("could not copy") || lower.contains("database is locked")
+}
+
 fn truncate_ytdlp_detail(detail: &str) -> String {
-    let lines: Vec<&str> = detail
-        .lines()
-        .map(str::trim)
-        .filter(|line| !line.is_empty())
-        .collect();
+    let mut lines: Vec<&str> = Vec::new();
+    for line in detail.lines().map(str::trim).filter(|line| !line.is_empty()) {
+        if lines.last().is_some_and(|prev| *prev == line) {
+            continue;
+        }
+        lines.push(line);
+    }
     if lines.is_empty() {
         return String::new();
     }

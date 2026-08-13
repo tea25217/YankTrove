@@ -116,7 +116,7 @@ brew install ffmpeg
   - プレイリスト URL も利用可能です。
 3. **クッキーの選択（メン限を取得する場合）**:
   - メンバーシップ加入済みアカウントで YouTube にログインしたブラウザを選択します。
-  - **Firefox を推奨**します。Chrome / Edge は起動中のロックに加え、終了後もクッキーを読み取れないことがあります。
+  - **Firefox を推奨**します。Windows の Chrome / Edge は Cookie をアプリ専用に暗号化するため、Yank Trove から読めないことがあります（[yt-dlp#10927](https://github.com/yt-dlp/yt-dlp/issues/10927)）。
 4. **保存先フォルダ**: デフォルトは `ダウンロード/YankTrove/{チャンネル名}/{タイトル} [{動画ID}]/`。「選択」ボタンで変更可能。
 5. **取得データの選択**: 保存したい項目にチェックを入れます。
 6. **動画リストを取得**: 右ペインに動画一覧が表示されます（件数が多い場合は時間がかかります）。タイトル・配信日・公開／メンバー限定で絞り込めます（リスト取得時点の情報を使用。プラン別の区別は未対応）。
@@ -147,15 +147,15 @@ YankTrove/{チャンネル名}/summary.csv   ← 取得データ選択の「整�
 
 「使用するブラウザのクッキー」で Google Chrome または Microsoft Edge を選択すると、クッキー読み取りに失敗することがあります。原因は次の2系統があります。
 
-- ブラウザ起動中の Cookie データベース排他ロック（`Could not copy ... cookie database` など。[yt-dlp#7271](https://github.com/yt-dlp/yt-dlp/issues/7271)）
-- 新しい Chrome / Edge の App-Bound Encryption により、終了後も外部プログラムが Cookie を復号できない（`DPAPI` / `Permission denied` など）
+- **App-Bound Encryption（多い）**: `Failed to decrypt with DPAPI`。[yt-dlp#10927](https://github.com/yt-dlp/yt-dlp/issues/10927)。ブラウザを終了しても直りません
+- **起動中の DB ロック**: `Could not copy ... cookie database`。[yt-dlp#7271](https://github.com/yt-dlp/yt-dlp/issues/7271)
 
 失敗時は処理ログとエラー本文に **yt-dlp の原文** を残します。Firefox の使用を推奨します。
 
 **暫定回避策**
 
-- **Firefox を使用する** — クッキー取得元を Firefox に切り替える
-- **Chrome / Edge を完全終了してから再試行する** — ロックが原因の場合のみ有効です。終了しても失敗するなら Firefox を使ってください
+- **Firefox を使用する** — クッキー取得元を Firefox に切り替える（DPAPI 失敗時の実質的な対処）
+- **Chrome / Edge を完全終了してから再試行する** — `Could not copy` のロックが原因の場合のみ有効です
 
 ---
 
@@ -166,7 +166,7 @@ YankTrove/{チャンネル名}/summary.csv   ← 取得データ選択の「整�
 
 | 症状                                   | 対処                                        |
 | ------------------------------------ | ----------------------------------------- |
-| リスト取得失敗（Chrome クッキー）                 | ログの「yt-dlp 原文」を確認。Firefox を使う（終了しても失敗するならロック以外） |
+| リスト取得失敗（Chrome クッキー / DPAPI）         | Firefox に切り替える。Chrome 終了では直らない（[yt-dlp#10927](https://github.com/yt-dlp/yt-dlp/issues/10927)） |
 | `n challenge solving failed`         | Deno（または Node.js 22+）をインストールして再起動         |
 | チャンネル URL で Videos/Live/Shorts の3件のみ | 正常動作です。Live のみ欲しい場合は `/streams` URL を直接入力 |
 | 字幕が英語（翻訳）になる                         | v0.2.0 以降は原語字幕を優先。再取得してください               |
