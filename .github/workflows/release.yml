@@ -46,9 +46,13 @@ jobs:
           EOF
           )"
 
-          GENERATED="$(gh api "repos/${GITHUB_REPOSITORY}/releases/generate-notes" \
-            -f tag_name="${TAG}" --jq .body)"
-          NOTES="${INSTALL}"$'\n\n'"${GENERATED}"
+          GENERATED="$(git log --pretty=format:'- %s' "$(git describe --tags --abbrev=0 "${TAG}^")..${TAG}" \
+            | grep -v '^- release:' || true)"
+          if [[ -z "${GENERATED}" ]]; then
+            GENERATED="$(gh api "repos/${GITHUB_REPOSITORY}/releases/generate-notes" \
+              -f tag_name="${TAG}" --jq .body)"
+          fi
+          NOTES="${INSTALL}"$'\n\n'"## 変更"$'\n\n'"${GENERATED}"
 
           if gh release view "${TAG}" >/dev/null 2>&1; then
             gh release edit "${TAG}" --title "Yank Trove ${TAG}" --notes "${NOTES}"
