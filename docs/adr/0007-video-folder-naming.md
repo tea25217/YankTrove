@@ -11,14 +11,14 @@ UI の「メタデータ」チェックは info.json をディスクに書くか
 
 ## Decision
 
-- フォルダ名は `{YYYY-MM-DD-hh-mm}_{title}`（**UTC**）。取れないときは `unknown-date_{title}`。
+- フォルダ名は `{YYYYMMDD-hhmm}_{title}`（**UTC**）。取れないときは `unknown-date_{title}`。
 - ダウンロード直前に各動画へ `yt-dlp -J --skip-download` でメタを取る（probe）。UI のメタデータチェックが OFF でも行う。
-- probe では `timestamp` / `release_timestamp` を優先。日付だけなら時刻は `00-00`。
+- probe では `timestamp` / `release_timestamp` を優先。日付だけなら時刻は `0000`。
 - 字幕言語用のメタ取得も、可能な範囲でこの probe と共有する。
 
-## Follow-up（未実施）
+## Follow-up
 
-扱いやすさのため `{YYYYMMDD-hhmm}_{title}` の方がよい、というメモがある（#19）。すぐのリリースは不要。変えるときは破壊的変更としてマイナーを上げる（ADR 0002）。パターンを設定から選べるようにする件も未着手。
+パターンを設定から選べるようにする件は未着手（#19）。
 
 ## Consequences
 

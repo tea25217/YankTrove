@@ -192,12 +192,7 @@ fn parse_uploaded_at(entry: &serde_json::Value) -> Option<String> {
 
     if let Some(date) = entry["upload_date"].as_str() {
         if date.len() == 8 && date.chars().all(|c| c.is_ascii_digit()) {
-            return Some(format!(
-                "{}-{}-{}-00-00",
-                &date[0..4],
-                &date[4..6],
-                &date[6..8]
-            ));
+            return Some(format!("{}{}{}-0000", &date[0..4], &date[4..6], &date[6..8]));
         }
         if !date.is_empty() {
             return Some(date.to_string());

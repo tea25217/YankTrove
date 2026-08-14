@@ -26,7 +26,7 @@ pub fn sanitize_folder_name(name: &str) -> String {
         .to_string()
 }
 
-/// Folder name for one video: `{YYYY-MM-DD-hh-mm}_{sanitized title}` (UTC).
+/// Folder name for one video: `{YYYYMMDD-hhmm}_{sanitized title}` (UTC).
 /// Title is truncated so the folder stays within common path limits.
 /// Missing datetimes become `unknown-date`. Unix timestamps become UTC date+time.
 pub fn video_folder_name(title: &str, uploaded_at: Option<&str>) -> String {
@@ -59,14 +59,20 @@ fn folder_datetime_prefix(uploaded_at: Option<&str>) -> String {
         return "unknown-date".to_string();
     };
 
-    // Already `YYYY-MM-DD-hh-mm` (possibly with trailing text).
-    if looks_like_ymd_hm(raw) {
-        return raw[..16].to_string();
+    if looks_like_compact_ymd_hm(raw) {
+        return raw[..13].to_string();
     }
 
-    // Date-only `YYYY-MM-DD` → midnight UTC so same-day sorts still group.
+    if looks_like_dashed_ymd_hm(raw) {
+        return compact_from_dashed_ymd_hm(raw);
+    }
+
     if looks_like_ymd(raw) {
-        return format!("{}-00-00", &raw[..10]);
+        return format!("{}{}{}-0000", &raw[0..4], &raw[5..7], &raw[8..10]);
+    }
+
+    if raw.len() == 8 && raw.bytes().all(|b| b.is_ascii_digit()) {
+        return format!("{raw}-0000");
     }
 
     if let Ok(timestamp) = raw.parse::<i64>() {
@@ -90,13 +96,31 @@ fn looks_like_ymd(raw: &str) -> bool {
             .all(|b| b.is_ascii_digit() || *b == b'-')
 }
 
-fn looks_like_ymd_hm(raw: &str) -> bool {
+fn looks_like_dashed_ymd_hm(raw: &str) -> bool {
     raw.len() >= 16
         && looks_like_ymd(raw)
         && raw.as_bytes().get(10) == Some(&b'-')
         && raw.as_bytes().get(13) == Some(&b'-')
         && raw.as_bytes()[11..13].iter().all(u8::is_ascii_digit)
         && raw.as_bytes()[14..16].iter().all(u8::is_ascii_digit)
+}
+
+fn looks_like_compact_ymd_hm(raw: &str) -> bool {
+    raw.len() >= 13
+        && raw.as_bytes()[..8].iter().all(u8::is_ascii_digit)
+        && raw.as_bytes().get(8) == Some(&b'-')
+        && raw.as_bytes()[9..13].iter().all(u8::is_ascii_digit)
+}
+
+fn compact_from_dashed_ymd_hm(raw: &str) -> String {
+    format!(
+        "{}{}{}-{}{}",
+        &raw[0..4],
+        &raw[5..7],
+        &raw[8..10],
+        &raw[11..13],
+        &raw[14..16]
+    )
 }
 
 fn unix_utc_ymd_hm(timestamp: i64) -> String {
@@ -114,7 +138,7 @@ fn unix_utc_ymd_hm(timestamp: i64) -> String {
     let d = doy - (153 * mp + 2) / 5 + 1;
     let m = if mp < 10 { mp + 3 } else { mp - 9 };
     let y = if m <= 2 { y + 1 } else { y };
-    format!("{y:04}-{m:02}-{d:02}-{hh:02}-{mm:02}")
+    format!("{y:04}{m:02}{d:02}-{hh:02}{mm:02}")
 }
 
 #[cfg(test)]
@@ -124,23 +148,28 @@ mod folder_name_tests {
     #[test]
     fn formats_unix_timestamp_with_utc_time() {
         // 2024-01-02 03:04:05 UTC
-        assert_eq!(unix_utc_ymd_hm(1_704_164_645), "2024-01-02-03-04");
+        assert_eq!(unix_utc_ymd_hm(1_704_164_645), "20240102-0304");
     }
 
     #[test]
     fn folder_prefix_from_unix_and_date_only() {
-        assert_eq!(folder_datetime_prefix(Some("1704164645")), "2024-01-02-03-04");
-        assert_eq!(folder_datetime_prefix(Some("2024-01-02")), "2024-01-02-00-00");
+        assert_eq!(folder_datetime_prefix(Some("1704164645")), "20240102-0304");
+        assert_eq!(folder_datetime_prefix(Some("2024-01-02")), "20240102-0000");
+        assert_eq!(folder_datetime_prefix(Some("20240102")), "20240102-0000");
         assert_eq!(
             folder_datetime_prefix(Some("2024-01-02-15-30")),
-            "2024-01-02-15-30"
+            "20240102-1530"
+        );
+        assert_eq!(
+            folder_datetime_prefix(Some("20240102-1530")),
+            "20240102-1530"
         );
     }
 
     #[test]
     fn folder_name_includes_datetime() {
         let name = video_folder_name("Hello World", Some("1704164645"));
-        assert_eq!(name, "2024-01-02-03-04_Hello World");
+        assert_eq!(name, "20240102-0304_Hello World");
     }
 }
 
