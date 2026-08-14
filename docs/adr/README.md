@@ -18,6 +18,7 @@ Yank Trove で後から覆すとコストが大きい判断を、番号付きの
 | [0006](./0006-bundled-runtimes.md) | yt-dlp と Deno を同梱。FFmpeg は同梱しない | Accepted |
 | [0007](./0007-video-folder-naming.md) | 動画フォルダは UTC 日時プレフィックス。日付は個別メタから取る | Accepted |
 | [0008](./0008-live-chat-as-subtitles.md) | チャットログは yt-dlp の `live_chat` 字幕として取る | Accepted |
-| [0009](./0009-os-locale-i18n.md) | 表示言語は OS ロケール。アプリ内切替はしない | Accepted |
+| [0009](./0009-os-locale-i18n.md) | 表示言語は OS ロケール。アプリ内切替はしない | Superseded by 0012 |
 | [0010](./0010-secret-scanning.md) | 秘密情報スキャンは Betterleaks | Accepted |
 | [0011](./0011-generated-release-notes.md) | GitHub Release 本文はコミットから自動生成 | Accepted |
+| [0012](./0012-in-app-language.md) | 表示言語は OS 初期値。以降はアプリ内で選び永続化する | Accepted |

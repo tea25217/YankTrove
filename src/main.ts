@@ -2,7 +2,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { open } from '@tauri-apps/plugin-dialog';
 import { VideoInfo, ChannelInfo, ProgressPayload } from './types';
-import { initI18n, locale, t } from './i18n';
+import { initI18n, locale, setLocale, t, applyDomI18n, Locale } from './i18n';
 
 // State management variables
 let fetchedVideos: VideoInfo[] = [];
@@ -24,28 +24,37 @@ document.addEventListener('DOMContentLoaded', async () => {
       <div class="logo-section">
         <h1><span class="logo-dot"></span>Yank Trove</h1>
       </div>
-      <div class="status-badges">
-        <div id="js-runtime-status" class="status-badge warn">${t('jsRuntimeChecking')}</div>
-        <div id="ffmpeg-status" class="status-badge warn">${t('ffmpegChecking')}</div>
+      <div class="header-actions">
+        <label class="language-switch" for="ui-locale">
+          <span data-i18n="languageLabel">${t('languageLabel')}</span>
+          <select id="ui-locale">
+            <option value="ja">日本語</option>
+            <option value="en">English</option>
+          </select>
+        </label>
+        <div class="status-badges">
+          <div id="js-runtime-status" class="status-badge warn">${t('jsRuntimeChecking')}</div>
+          <div id="ffmpeg-status" class="status-badge warn">${t('ffmpegChecking')}</div>
+        </div>
       </div>
     </header>
     <div class="main-container">
       <div class="left-pane">
         <div class="form-group">
-          <label for="channel-url">${t('urlLabel')}</label>
+          <label for="channel-url" data-i18n="urlLabel">${t('urlLabel')}</label>
           <input type="text" id="channel-url" placeholder="https://www.youtube.com/..." />
         </div>
         
         <div class="form-group">
-          <label for="cookies-browser">${t('cookieLabel')}</label>
+          <label for="cookies-browser" data-i18n="cookieLabel">${t('cookieLabel')}</label>
           <select id="cookies-browser">
-            <option value="none">${t('cookieNone')}</option>
-            <option value="firefox">${t('cookieFirefox')}</option>
-            <option value="chrome">${t('cookieChrome')}</option>
-            <option value="edge">${t('cookieEdge')}</option>
-            <option value="safari">${t('cookieSafari')}</option>
+            <option value="none" data-i18n="cookieNone">${t('cookieNone')}</option>
+            <option value="firefox" data-i18n="cookieFirefox">${t('cookieFirefox')}</option>
+            <option value="chrome" data-i18n="cookieChrome">${t('cookieChrome')}</option>
+            <option value="edge" data-i18n="cookieEdge">${t('cookieEdge')}</option>
+            <option value="safari" data-i18n="cookieSafari">${t('cookieSafari')}</option>
           </select>
-          <div id="cookie-lock-warning" class="warning-box">
+          <div id="cookie-lock-warning" class="warning-box" data-i18n="cookieLockWarning">
             ${t('cookieLockWarning')}
           </div>
         </div>
@@ -53,45 +62,45 @@ document.addEventListener('DOMContentLoaded', async () => {
         <button type="button" id="fetch-list-btn" class="btn btn-secondary">${t('fetchList')}</button>
 
         <div class="form-group">
-          <label>${t('saveDirLabel')}</label>
+          <label data-i18n="saveDirLabel">${t('saveDirLabel')}</label>
           <div class="input-wrapper">
-            <input type="text" id="download-dir" readonly placeholder="${t('saveDirPlaceholder')}" />
-            <button type="button" id="browse-dir" class="browse-btn">${t('browseDir')}</button>
-            <button type="button" id="open-dir" class="browse-btn">${t('openDir')}</button>
+            <input type="text" id="download-dir" readonly data-i18n-placeholder="saveDirPlaceholder" placeholder="${t('saveDirPlaceholder')}" />
+            <button type="button" id="browse-dir" class="browse-btn" data-i18n="browseDir">${t('browseDir')}</button>
+            <button type="button" id="open-dir" class="browse-btn" data-i18n="openDir">${t('openDir')}</button>
           </div>
         </div>
 
         <div class="checkbox-card">
-          <h3>${t('dataSelect')}</h3>
+          <h3 data-i18n="dataSelect">${t('dataSelect')}</h3>
           <label class="checkbox-option">
-            <input type="checkbox" id="opt-metadata" checked /> ${t('optMetadata')}
+            <input type="checkbox" id="opt-metadata" checked /> <span data-i18n="optMetadata">${t('optMetadata')}</span>
           </label>
           <label class="checkbox-option">
-            <input type="checkbox" id="opt-chat" checked /> ${t('optChat')}
+            <input type="checkbox" id="opt-chat" checked /> <span data-i18n="optChat">${t('optChat')}</span>
           </label>
           <label class="checkbox-option">
-            <input type="checkbox" id="opt-description" checked /> ${t('optDescription')}
+            <input type="checkbox" id="opt-description" checked /> <span data-i18n="optDescription">${t('optDescription')}</span>
           </label>
           <label class="checkbox-option">
-            <input type="checkbox" id="opt-subtitles" checked /> ${t('optSubtitles')}
+            <input type="checkbox" id="opt-subtitles" checked /> <span data-i18n="optSubtitles">${t('optSubtitles')}</span>
           </label>
           <label class="checkbox-option">
-            <input type="checkbox" id="opt-thumbnail" checked /> ${t('optThumbnail')}
+            <input type="checkbox" id="opt-thumbnail" checked /> <span data-i18n="optThumbnail">${t('optThumbnail')}</span>
           </label>
           <label class="checkbox-option">
-            <input type="checkbox" id="opt-video" /> ${t('optVideo')}
+            <input type="checkbox" id="opt-video" /> <span data-i18n="optVideo">${t('optVideo')}</span>
           </label>
           <label class="checkbox-option">
-            <input type="checkbox" id="opt-audio" /> ${t('optAudio')}
+            <input type="checkbox" id="opt-audio" /> <span data-i18n="optAudio">${t('optAudio')}</span>
           </label>
           <label class="checkbox-option">
-            <input type="checkbox" id="opt-csv" /> ${t('optCsv')}
+            <input type="checkbox" id="opt-csv" /> <span data-i18n="optCsv">${t('optCsv')}</span>
           </label>
-          <div id="ffmpeg-warning" class="warning-box">
+          <div id="ffmpeg-warning" class="warning-box" data-i18n-html="ffmpegWarning">
             ${t('ffmpegWarning')}
           </div>
           <div id="audio-format-group" class="audio-format-group">
-            <label for="audio-format">${t('audioFormat')}</label>
+            <label for="audio-format" data-i18n="audioFormat">${t('audioFormat')}</label>
             <select id="audio-format">
               <option value="mp3">MP3</option>
               <option value="m4a">M4A</option>
@@ -100,7 +109,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         </div>
 
         <div class="form-group">
-          <label for="delay-seconds">${t('delayLabel')}</label>
+          <label for="delay-seconds" data-i18n="delayLabel">${t('delayLabel')}</label>
           <input type="number" id="delay-seconds" min="0" max="60" value="5" style="padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-color); outline: none;" />
         </div>
       </div>
@@ -113,23 +122,23 @@ document.addEventListener('DOMContentLoaded', async () => {
           </div>
           <div class="queue-filters" id="queue-filters">
             <label class="queue-filter">
-              <span>${t('filterTitle')}</span>
-              <input type="search" id="filter-title" placeholder="${t('filterTitlePlaceholder')}" />
+              <span data-i18n="filterTitle">${t('filterTitle')}</span>
+              <input type="search" id="filter-title" data-i18n-placeholder="filterTitlePlaceholder" placeholder="${t('filterTitlePlaceholder')}" />
             </label>
             <label class="queue-filter">
-              <span>${t('filterDateFrom')}</span>
+              <span data-i18n="filterDateFrom">${t('filterDateFrom')}</span>
               <input type="date" id="filter-date-from" />
             </label>
             <label class="queue-filter">
-              <span>${t('filterDateTo')}</span>
+              <span data-i18n="filterDateTo">${t('filterDateTo')}</span>
               <input type="date" id="filter-date-to" />
             </label>
             <label class="queue-filter">
-              <span>${t('filterAvailability')}</span>
+              <span data-i18n="filterAvailability">${t('filterAvailability')}</span>
               <select id="filter-availability">
-                <option value="all">${t('filterAvailabilityAll')}</option>
-                <option value="public">${t('filterAvailabilityPublic')}</option>
-                <option value="members">${t('filterAvailabilityMembers')}</option>
+                <option value="all" data-i18n="filterAvailabilityAll">${t('filterAvailabilityAll')}</option>
+                <option value="public" data-i18n="filterAvailabilityPublic">${t('filterAvailabilityPublic')}</option>
+                <option value="members" data-i18n="filterAvailabilityMembers">${t('filterAvailabilityMembers')}</option>
               </select>
             </label>
           </div>
@@ -141,7 +150,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         </div>
 
         <div class="action-section">
-          <button type="button" id="start-btn" class="btn btn-primary" disabled>${t('start')}</button>
+          <button type="button" id="start-btn" class="btn btn-primary" data-i18n="start" disabled>${t('start')}</button>
           <button type="button" id="cancel-btn" class="btn btn-danger">${t('cancel')}</button>
         </div>
 
@@ -162,7 +171,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         <div class="console-card">
           <div class="console-header">
-            <span>${t('logTitle')}</span>
+            <span data-i18n="logTitle">${t('logTitle')}</span>
             <span id="console-status" style="font-weight: normal; color: var(--text-secondary);">${t('statusIdle')}</span>
           </div>
           <div class="console-body" id="console-log">${t('startedLog')}</div>
@@ -210,8 +219,18 @@ document.addEventListener('DOMContentLoaded', async () => {
   const consoleStatusEl = document.getElementById('console-status') as HTMLSpanElement;
   const jsRuntimeStatusBadge = document.getElementById('js-runtime-status') as HTMLDivElement;
   const ffmpegStatusBadge = document.getElementById('ffmpeg-status') as HTMLDivElement;
+  const uiLocaleSelect = document.getElementById('ui-locale') as HTMLSelectElement;
   let downloadJobCurrent = 0;
   let downloadJobTotal = 0;
+  let isFetchingList = false;
+  let listError: string | null = null;
+  let consolePhase: 'idle' | 'fetching' | 'downloading' | 'done' | 'cancelled' | 'error' = 'idle';
+  let lastEta: string | null = null;
+  let envSnapshot: {
+    ffmpeg_installed: boolean;
+    js_runtime_installed: boolean;
+    js_runtime_name: string | null;
+  } | null = null;
 
   // Log utility
   function addLog(message: string, isError = false) {
@@ -239,6 +258,93 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   cookiesBrowserSelect.addEventListener('change', updateCookieLockWarning);
   updateCookieLockWarning();
+
+  function setConsolePhase(phase: typeof consolePhase) {
+    consolePhase = phase;
+    const statusKey = {
+      idle: 'statusIdle',
+      fetching: 'statusFetching',
+      downloading: 'statusDownloading',
+      done: 'statusDone',
+      cancelled: 'statusCancelled',
+      error: 'statusError',
+    } as const;
+    consoleStatusEl.textContent = t(statusKey[phase]);
+  }
+
+  function refreshEnvBadges() {
+    if (!envSnapshot) {
+      return;
+    }
+    if (envSnapshot.js_runtime_installed) {
+      const runtimeLabel = envSnapshot.js_runtime_name
+        ? envSnapshot.js_runtime_name.charAt(0).toUpperCase() + envSnapshot.js_runtime_name.slice(1)
+        : 'Runtime';
+      jsRuntimeStatusBadge.textContent = t('jsRuntimeFound', { name: runtimeLabel });
+      jsRuntimeStatusBadge.className = 'status-badge ok';
+    } else {
+      jsRuntimeStatusBadge.textContent = t('jsRuntimeMissing');
+      jsRuntimeStatusBadge.className = 'status-badge warn';
+    }
+    if (envSnapshot.ffmpeg_installed) {
+      ffmpegStatusBadge.textContent = t('ffmpegFound');
+      ffmpegStatusBadge.className = 'status-badge ok';
+    } else {
+      ffmpegStatusBadge.textContent = t('ffmpegMissing');
+      ffmpegStatusBadge.className = 'status-badge warn';
+    }
+  }
+
+  function refreshQueueChrome() {
+    if (fetchedVideos.length > 0) {
+      channelTitleDisplay.textContent = t('queueTitleWithChannel', { channel: currentChannelTitle });
+      renderQueue();
+      return;
+    }
+    channelTitleDisplay.textContent = t('queueTitle');
+    updateQueueStats();
+    if (isFetchingList) {
+      videoListEl.innerHTML = `<div style="padding: 20px; text-align: center; color: var(--text-secondary);">${t('parsingVideos')}</div>`;
+      return;
+    }
+    if (listError) {
+      videoListEl.replaceChildren();
+      const errorBox = document.createElement('div');
+      errorBox.style.padding = '20px';
+      errorBox.style.color = 'var(--danger-color)';
+      errorBox.style.whiteSpace = 'pre-wrap';
+      errorBox.style.fontSize = '13px';
+      errorBox.style.lineHeight = '1.5';
+      errorBox.textContent = `${t('listFailed')}\n\n${listError}`;
+      videoListEl.appendChild(errorBox);
+      return;
+    }
+    videoListEl.innerHTML = `<div style="padding: 20px; text-align: center; color: var(--text-secondary); font-size: 13px;">${t('queueEmpty')}</div>`;
+  }
+
+  function applyUiLanguage() {
+    applyDomI18n();
+    fetchListBtn.textContent = isFetchingList ? t('fetchingList') : t('fetchList');
+    cancelBtn.textContent = cancelBtn.disabled && isDownloading ? t('cancelling') : t('cancel');
+    setConsolePhase(consolePhase);
+    refreshEnvBadges();
+    refreshQueueChrome();
+    downloadCountEl.textContent = t('progressCount', {
+      current: downloadJobCurrent,
+      total: downloadJobTotal,
+    });
+    downloadEtaEl.textContent = lastEta ? t('etaRemaining', { eta: lastEta }) : t('etaIdle');
+  }
+
+  uiLocaleSelect.value = locale();
+  uiLocaleSelect.addEventListener('change', () => {
+    const next = uiLocaleSelect.value as Locale;
+    if (next !== 'ja' && next !== 'en') {
+      return;
+    }
+    setLocale(next);
+    applyUiLanguage();
+  });
 
   [filterTitleInput, filterDateFromInput, filterDateToInput, filterAvailabilitySelect].forEach(el => {
     el.addEventListener('input', () => {
@@ -283,6 +389,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       js_runtime_installed: boolean;
       js_runtime_name: string | null;
     } = await invoke('check_environment');
+    envSnapshot = env;
 
     if (env.js_runtime_installed) {
       const runtimeLabel = env.js_runtime_name
@@ -345,7 +452,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     fetchListBtn.disabled = true;
+    isFetchingList = true;
+    listError = null;
     fetchListBtn.textContent = t('fetchingList');
+    consolePhase = 'fetching';
     consoleStatusEl.textContent = t('statusFetching');
     addLog(t('fetchingListLog', { url }));
     if (isChromiumCookieBrowser(cookiesBrowserSelect.value)) {
@@ -362,6 +472,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
 
       fetchedVideos = info.videos;
+      listError = null;
       currentChannelTitle = info.channel_title;
       channelTitleDisplay.textContent = t('queueTitleWithChannel', { channel: info.channel_title });
       checkedVideoIds.clear();
@@ -395,10 +506,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       errorBox.textContent = `${t('listFailed')}\n\n${errText}`;
       videoListEl.appendChild(errorBox);
       startBtn.disabled = true;
+      listError = errText;
       addLog(t('listFailedLog', { error: errText }), true);
     } finally {
+      isFetchingList = false;
       fetchListBtn.disabled = false;
       fetchListBtn.textContent = t('fetchList');
+      consolePhase = 'idle';
       consoleStatusEl.textContent = t('statusIdle');
     }
   });
@@ -631,6 +745,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     (document.getElementById('select-all-videos') as HTMLInputElement).disabled = true;
 
     monitorCardEl.style.display = 'block';
+    consolePhase = 'downloading';
     consoleStatusEl.textContent = t('statusDownloading');
     downloadJobTotal = selectedVideos.length;
     downloadJobCurrent = 0;
@@ -657,13 +772,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         locale: locale(),
       });
       addLog(t('allDone'));
+      consolePhase = 'done';
       consoleStatusEl.textContent = t('statusDone');
     } catch (err) {
       if (err === 'Cancelled') {
         addLog(t('downloadCancelled'), true);
+        consolePhase = 'cancelled';
         consoleStatusEl.textContent = t('statusCancelled');
       } else {
         addLog(t('downloadError', { error: String(err) }), true);
+        consolePhase = 'error';
         consoleStatusEl.textContent = t('statusError');
       }
     } finally {
@@ -709,6 +827,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     progressBarEl.className = 'progress-bar-fill';
     activeVideoTitleEl.textContent = '-';
     downloadSpeedEl.textContent = '- MB/s';
+    lastEta = null;
     downloadEtaEl.textContent = t('etaIdle');
     downloadPercentEl.textContent = '0%';
     downloadCountEl.textContent = t('progressCount', { current: 0, total: 0 });
@@ -746,6 +865,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     progressBarEl.className = 'progress-bar-fill';
     downloadPercentEl.textContent = '0%';
     downloadSpeedEl.textContent = '- MB/s';
+    lastEta = null;
     downloadEtaEl.textContent = t('etaIdle');
   });
 
@@ -776,7 +896,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     progressBarEl.style.width = `${progress.percentage}%`;
     downloadPercentEl.textContent = `${Math.floor(progress.percentage)}%`;
     if (progress.speed) downloadSpeedEl.textContent = progress.speed;
-    if (progress.eta) downloadEtaEl.textContent = t('etaRemaining', { eta: progress.eta });
+    if (progress.eta) {
+      lastEta = progress.eta;
+      downloadEtaEl.textContent = t('etaRemaining', { eta: progress.eta });
+    }
   });
 
   // Append raw download stdout/stderr line logs

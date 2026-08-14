@@ -100,6 +100,7 @@ const ja = {
   cancelError: 'ダウンロードキャンセル中にエラーが発生しました: {error}',
   downloadStartLog: '動画のダウンロードを開始しました: {title}',
   downloadFinishLog: '動画のダウンロードが完了しました: {title}',
+  languageLabel: '表示言語',
 } as const;
 
 const en: { [K in keyof typeof ja]: string } = {
@@ -202,9 +203,12 @@ const en: { [K in keyof typeof ja]: string } = {
   cancelError: 'Failed to cancel download: {error}',
   downloadStartLog: 'Started download: {title}',
   downloadFinishLog: 'Finished download: {title}',
+  languageLabel: 'Language',
 };
 
 const catalogs = { ja, en };
+
+const LOCALE_STORAGE_KEY = 'yank-trove.locale';
 
 let currentLocale: Locale = 'ja';
 
@@ -212,9 +216,41 @@ export function detectLocale(language = navigator.language): Locale {
   return language.toLowerCase().startsWith('ja') ? 'ja' : 'en';
 }
 
+function isLocale(value: string | null): value is Locale {
+  return value === 'ja' || value === 'en';
+}
+
+function readStoredLocale(): Locale | null {
+  try {
+    const stored = localStorage.getItem(LOCALE_STORAGE_KEY);
+    return isLocale(stored) ? stored : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredLocale(next: Locale): void {
+  try {
+    localStorage.setItem(LOCALE_STORAGE_KEY, next);
+  } catch {
+    // Ignore quota / private-mode failures; UI language still applies this session.
+  }
+}
+
+function applyDocumentLang(next: Locale): void {
+  document.documentElement.lang = next === 'ja' ? 'ja' : 'en';
+}
+
 export function initI18n(): Locale {
-  currentLocale = detectLocale();
-  document.documentElement.lang = currentLocale;
+  currentLocale = readStoredLocale() ?? detectLocale();
+  applyDocumentLang(currentLocale);
+  return currentLocale;
+}
+
+export function setLocale(next: Locale): Locale {
+  currentLocale = next;
+  writeStoredLocale(next);
+  applyDocumentLang(next);
   return currentLocale;
 }
 
@@ -232,4 +268,25 @@ export function t(key: MessageKey, vars?: Record<string, string | number>): stri
     }
   }
   return text;
+}
+
+export function applyDomI18n(root: ParentNode = document): void {
+  root.querySelectorAll<HTMLElement>('[data-i18n]').forEach((el) => {
+    const key = el.dataset.i18n as MessageKey | undefined;
+    if (key) {
+      el.textContent = t(key);
+    }
+  });
+  root.querySelectorAll<HTMLElement>('[data-i18n-html]').forEach((el) => {
+    const key = el.dataset.i18nHtml as MessageKey | undefined;
+    if (key) {
+      el.innerHTML = t(key);
+    }
+  });
+  root.querySelectorAll<HTMLInputElement>('[data-i18n-placeholder]').forEach((el) => {
+    const key = el.dataset.i18nPlaceholder as MessageKey | undefined;
+    if (key) {
+      el.placeholder = t(key);
+    }
+  });
 }

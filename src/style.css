@@ -90,6 +90,29 @@ header {
   gap: 12px;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.language-switch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.language-switch select {
+  width: auto;
+  min-width: 7.5rem;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
 .status-badge {
   padding: 6px 12px;
   border-radius: 50px;
