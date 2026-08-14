@@ -10,7 +10,57 @@ permissions:
   contents: write
 
 jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    outputs:
+      release_id: ${{ steps.create.outputs.release_id }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create GitHub Release with generated notes
+        id: create
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"
+          if [[ ! "${TAG}" =~ ^v ]]; then
+            TAG="v$(node -p "require('./package.json').version")"
+          fi
+
+          INSTALL="$(cat <<'EOF'
+          Windows / macOS 向けインストーラーです。yt-dlp と Deno を同梱しています。
+
+          ## インストール
+          - **Windows（一般向け）**: `Yank Trove_*_x64-setup.exe`（NSIS）
+          - **Windows（組織向け）**: `Yank Trove_*_x64_*.msi`
+          - **macOS（Apple Silicon）**: `*.dmg`（aarch64）
+          - **macOS（Intel）**: `*.dmg`（x64）
+
+          macOS は開発環境での動作確認ができていません。問題があれば Issue で報告してください。
+
+          FFmpeg が必要な場合は README の手順を参照してください。
+          EOF
+          )"
+
+          GENERATED="$(gh api "repos/${GITHUB_REPOSITORY}/releases/generate-notes" \
+            -f tag_name="${TAG}" --jq .body)"
+          NOTES="${INSTALL}"$'\n\n'"${GENERATED}"
+
+          if gh release view "${TAG}" >/dev/null 2>&1; then
+            gh release edit "${TAG}" --title "Yank Trove ${TAG}" --notes "${NOTES}"
+          else
+            gh release create "${TAG}" --title "Yank Trove ${TAG}" --notes "${NOTES}" --target "${GITHUB_SHA}"
+          fi
+
+          ID="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG}" --jq .id)"
+          echo "release_id=${ID}" >> "${GITHUB_OUTPUT}"
+
   publish:
+    needs: create-release
     strategy:
       fail-fast: false
       matrix:
@@ -59,21 +109,5 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: v__VERSION__
-          releaseName: 'Yank Trove v__VERSION__'
-          generateReleaseNotes: true
-          releaseBody: |
-            Windows / macOS 向けインストーラーです。yt-dlp と Deno を同梱しています。
-
-            ## インストール
-            - **Windows（一般向け）**: `Yank Trove_*_x64-setup.exe`（NSIS）
-            - **Windows（組織向け）**: `Yank Trove_*_x64_*.msi`
-            - **macOS（Apple Silicon）**: `*.dmg`（aarch64）
-            - **macOS（Intel）**: `*.dmg`（x64）
-
-            macOS は開発環境での動作確認ができていません。問題があれば Issue で報告してください。
-
-            FFmpeg が必要な場合は README の手順を参照してください。
-          releaseDraft: false
-          prerelease: false
+          releaseId: ${{ needs.create-release.outputs.release_id }}
           args: ${{ matrix.args }}

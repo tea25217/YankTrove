@@ -9,9 +9,11 @@ Release workflow の `releaseBody` がインストール手順の固定文だけ
 
 ## Decision
 
-`tauri-apps/tauri-action` の `generateReleaseNotes: true` を使う。GitHub の Release Notes API が前タグからのコミット / PR を本文にする。既存のインストール手順は `releaseBody` に残し、自動生成の前に付く。
+Release 作成は workflow の `create-release` ジョブで一度だけ行う。GitHub の Release Notes API で前タグからの変更一覧を作り、インストール手順の後に付ける。各 OS の `tauri-action` は既存 Release へ成果物を載せるだけにする。
 
-v0.7.0 以前の Release は遡って書き換えない。次の `v*` タグから有効。
+v0.7.0 以前の Release は遡って書き換えない。v0.8.0 から有効。
+
+`tauri-action` の `generateReleaseNotes` を matrix の各ジョブで使うと、後続ジョブの `updateRelease` が本文をインストール手順だけに戻してしまうため使わない。
 
 ## Consequences
 
