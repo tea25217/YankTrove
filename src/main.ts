@@ -68,6 +68,19 @@ document.addEventListener('DOMContentLoaded', async () => {
             <button type="button" id="browse-dir" class="browse-btn" data-i18n="browseDir">${t('browseDir')}</button>
             <button type="button" id="open-dir" class="browse-btn" data-i18n="openDir">${t('openDir')}</button>
           </div>
+          <label class="checkbox-option" style="margin-top: 8px;">
+            <input type="checkbox" id="opt-create-yanktrove" checked />
+            <span data-i18n="createYankTroveFolder">${t('createYankTroveFolder')}</span>
+          </label>
+        </div>
+
+        <div class="form-group">
+          <label for="overwrite-mode" data-i18n="overwriteModeLabel">${t('overwriteModeLabel')}</label>
+          <select id="overwrite-mode">
+            <option value="skip" data-i18n="overwriteModeSkip" selected>${t('overwriteModeSkip')}</option>
+            <option value="overwrite" data-i18n="overwriteModeOverwrite">${t('overwriteModeOverwrite')}</option>
+            <option value="ask" data-i18n="overwriteModeAsk">${t('overwriteModeAsk')}</option>
+          </select>
         </div>
 
         <div class="checkbox-card">
@@ -187,6 +200,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   const downloadDirInput = document.getElementById('download-dir') as HTMLInputElement;
   const browseDirBtn = document.getElementById('browse-dir') as HTMLButtonElement;
   const openDirBtn = document.getElementById('open-dir') as HTMLButtonElement;
+  const createYankTroveCheckbox = document.getElementById('opt-create-yanktrove') as HTMLInputElement;
+  const overwriteModeSelect = document.getElementById('overwrite-mode') as HTMLSelectElement;
   const fetchListBtn = document.getElementById('fetch-list-btn') as HTMLButtonElement;
   
   const optVideoCheckbox = document.getElementById('opt-video') as HTMLInputElement;
@@ -324,6 +339,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function applyUiLanguage() {
     applyDomI18n();
+    updateSaveDirPlaceholder();
     fetchListBtn.textContent = isFetchingList ? t('fetchingList') : t('fetchList');
     cancelBtn.textContent = cancelBtn.disabled && isDownloading ? t('cancelling') : t('cancel');
     setConsolePhase(consolePhase);
@@ -335,6 +351,61 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
     downloadEtaEl.textContent = lastEta ? t('etaRemaining', { eta: lastEta }) : t('etaIdle');
   }
+
+  const CREATE_YANKTROVE_KEY = 'yank-trove.create-yanktrove-folder';
+  const OVERWRITE_MODE_KEY = 'yank-trove.overwrite-mode';
+
+  function readStoredBool(key: string, fallback: boolean): boolean {
+    try {
+      const value = localStorage.getItem(key);
+      if (value === 'true') return true;
+      if (value === 'false') return false;
+    } catch {
+      // ignore
+    }
+    return fallback;
+  }
+
+  function writeStored(key: string, value: string): void {
+    try {
+      localStorage.setItem(key, value);
+    } catch {
+      // ignore
+    }
+  }
+
+  function updateSaveDirPlaceholder() {
+    const key = createYankTroveCheckbox.checked
+      ? 'saveDirPlaceholder'
+      : 'saveDirPlaceholderNoYankTrove';
+    downloadDirInput.dataset.i18nPlaceholder = key;
+    if (!downloadDirInput.value) {
+      downloadDirInput.placeholder = t(key);
+    }
+  }
+
+  createYankTroveCheckbox.checked = readStoredBool(CREATE_YANKTROVE_KEY, true);
+  const storedOverwrite = (() => {
+    try {
+      return localStorage.getItem(OVERWRITE_MODE_KEY);
+    } catch {
+      return null;
+    }
+  })();
+  if (storedOverwrite === 'overwrite' || storedOverwrite === 'skip' || storedOverwrite === 'ask') {
+    overwriteModeSelect.value = storedOverwrite;
+  } else {
+    overwriteModeSelect.value = 'skip';
+  }
+  updateSaveDirPlaceholder();
+
+  createYankTroveCheckbox.addEventListener('change', () => {
+    writeStored(CREATE_YANKTROVE_KEY, String(createYankTroveCheckbox.checked));
+    updateSaveDirPlaceholder();
+  });
+  overwriteModeSelect.addEventListener('change', () => {
+    writeStored(OVERWRITE_MODE_KEY, overwriteModeSelect.value);
+  });
 
   uiLocaleSelect.value = locale();
   uiLocaleSelect.addEventListener('change', () => {
@@ -437,7 +508,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   openDirBtn.addEventListener('click', async () => {
     try {
-      await invoke('open_save_folder', { customDir: selectedDir });
+      await invoke('open_save_folder', {
+        customDir: selectedDir,
+        createYanktroveFolder: createYankTroveCheckbox.checked,
+      });
     } catch (err) {
       addLog(t('openDirError', { error: String(err) }), true);
     }
@@ -724,6 +798,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       csv: (document.getElementById('opt-csv') as HTMLInputElement).checked,
       audio_format: audioFormatSelect.value,
       cookies_browser: cookiesBrowserSelect.value,
+      create_yanktrove_folder: createYankTroveCheckbox.checked,
+      overwrite_mode: overwriteModeSelect.value as 'overwrite' | 'skip' | 'ask',
     };
 
     const delaySeconds = parseInt(delaySecondsInput.value) || 0;
@@ -735,6 +811,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     fetchListBtn.disabled = true;
     cookiesBrowserSelect.disabled = true;
     channelUrlInput.disabled = true;
+    createYankTroveCheckbox.disabled = true;
+    overwriteModeSelect.disabled = true;
     filterTitleInput.disabled = true;
     filterDateFromInput.disabled = true;
     filterDateToInput.disabled = true;
@@ -812,6 +890,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     fetchListBtn.disabled = false;
     cookiesBrowserSelect.disabled = false;
     channelUrlInput.disabled = false;
+    createYankTroveCheckbox.disabled = false;
+    overwriteModeSelect.disabled = false;
     filterTitleInput.disabled = false;
     filterDateFromInput.disabled = false;
     filterDateToInput.disabled = false;

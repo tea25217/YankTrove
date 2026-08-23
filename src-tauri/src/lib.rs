@@ -9,13 +9,15 @@ mod text_decode;
 
 use crate::utils::{
     is_ffmpeg_installed, detect_js_runtime, cleanup_incomplete_files, sanitize_folder_name,
-    video_folder_name, CsvVideoRow, format_duration_seconds, write_channel_summary_csv,
+    video_folder_name, video_dir_has_existing_outputs, CsvVideoRow, format_duration_seconds,
+    write_channel_summary_csv,
 };
 use crate::i18n::UiLocale;
 use crate::command_runner::{
-    AppState, DownloadOptions, VideoDownloadTarget, ChannelInfo, ProgressPayload,
+    AppState, DownloadOptions, OverwriteAction, VideoDownloadTarget, ChannelInfo, ProgressPayload,
     fetch_channel_videos, download_single_video, probe_video,
 };
+use tauri_plugin_dialog::{DialogExt, MessageDialogButtons};
 
 #[derive(serde::Serialize)]
 struct EnvStatus {
@@ -67,7 +69,11 @@ async fn start_download_archive(
     };
 
     let sanitized_title = sanitize_folder_name(&channel_title);
-    let channel_dir = base_dir.join("YankTrove").join(sanitized_title);
+    let channel_dir = if options.create_yanktrove_folder {
+        base_dir.join("YankTrove").join(&sanitized_title)
+    } else {
+        base_dir.join(&sanitized_title)
+    };
 
     // Ensure download folder exists
     std::fs::create_dir_all(&channel_dir)
@@ -119,46 +125,97 @@ async fn start_download_archive(
             });
         }
 
+        let has_existing = video_dir_has_existing_outputs(&video_dir);
+        let action = if !has_existing {
+            OverwriteAction::Overwrite
+        } else {
+            match options.overwrite_mode.as_str() {
+                "overwrite" => OverwriteAction::Overwrite,
+                "ask" => {
+                    let app_for_dialog = app.clone();
+                    let title_for_dialog = video.title.clone();
+                    let decided = tokio::task::spawn_blocking(move || {
+                        app_for_dialog
+                            .dialog()
+                            .message(crate::i18n::overwrite_prompt_message(
+                                &title_for_dialog,
+                                ui_locale,
+                            ))
+                            .title(crate::i18n::overwrite_prompt_title(ui_locale))
+                            .buttons(MessageDialogButtons::YesNo)
+                            .blocking_show()
+                    })
+                    .await
+                    .map_err(|e| format!("Overwrite prompt failed: {e}"))?;
+
+                    if decided {
+                        OverwriteAction::Overwrite
+                    } else {
+                        OverwriteAction::Skip
+                    }
+                }
+                _ => OverwriteAction::Skip, // "skip" and unknown
+            }
+        };
+
         // Notify UI that video processing has started
         let _ = app.emit("video-started", video.id.clone());
 
-        match download_single_video(
-            &app,
-            &state,
-            &video.id,
-            &video.url,
-            &options,
-            &video_dir,
-            ui_locale,
-            prefetched_language,
-        )
-        .await
-        {
-            Ok(_) => {
-                let _ = app.emit("video-finished", video.id.clone());
-            }
-            Err(e) => {
-                if e == "Cancelled" {
-                    // Clean up incomplete files for the active download
-                    let _ = cleanup_incomplete_files(&video_dir, &video.id);
-                    let _ = app.emit("download-log", ProgressPayload {
-                        video_id: video.id.clone(),
-                        percentage: 0.0,
-                        speed: None,
-                        eta: None,
-                        status: "Cancelled".to_string(),
-                        log: Some(crate::i18n::download_cancelled_log(&video.id, ui_locale)),
-                    });
-                    return Err("Cancelled".to_string());
-                } else {
-                    let _ = app.emit("download-log", ProgressPayload {
-                        video_id: video.id.clone(),
-                        percentage: 0.0,
-                        speed: None,
-                        eta: None,
-                        status: "Error".to_string(),
-                        log: Some(crate::i18n::video_failed_log(&video.id, &e, ui_locale)),
-                    });
+        if action == OverwriteAction::Skip {
+            let _ = app.emit(
+                "download-log",
+                ProgressPayload {
+                    video_id: video.id.clone(),
+                    percentage: 0.0,
+                    speed: None,
+                    eta: None,
+                    status: "Skipped".to_string(),
+                    log: Some(crate::i18n::existing_files_skip_log(&video.title, ui_locale)),
+                },
+            );
+            let _ = app.emit("video-finished", video.id.clone());
+        } else {
+            let force_overwrite =
+                has_existing || options.overwrite_mode.as_str() == "overwrite";
+            match download_single_video(
+                &app,
+                &state,
+                &video.id,
+                &video.url,
+                &options,
+                &video_dir,
+                ui_locale,
+                prefetched_language,
+                force_overwrite,
+            )
+            .await
+            {
+                Ok(_) => {
+                    let _ = app.emit("video-finished", video.id.clone());
+                }
+                Err(e) => {
+                    if e == "Cancelled" {
+                        // Clean up incomplete files for the active download
+                        let _ = cleanup_incomplete_files(&video_dir, &video.id);
+                        let _ = app.emit("download-log", ProgressPayload {
+                            video_id: video.id.clone(),
+                            percentage: 0.0,
+                            speed: None,
+                            eta: None,
+                            status: "Cancelled".to_string(),
+                            log: Some(crate::i18n::download_cancelled_log(&video.id, ui_locale)),
+                        });
+                        return Err("Cancelled".to_string());
+                    } else {
+                        let _ = app.emit("download-log", ProgressPayload {
+                            video_id: video.id.clone(),
+                            percentage: 0.0,
+                            speed: None,
+                            eta: None,
+                            status: "Error".to_string(),
+                            log: Some(crate::i18n::video_failed_log(&video.id, &e, ui_locale)),
+                        });
+                    }
                 }
             }
         }
@@ -230,14 +287,22 @@ async fn cancel_downloads(state: tauri::State<'_, AppState>) -> Result<(), Strin
 }
 
 #[tauri::command]
-fn open_save_folder(app: tauri::AppHandle, custom_dir: Option<String>) -> Result<(), String> {
+fn open_save_folder(
+    app: tauri::AppHandle,
+    custom_dir: Option<String>,
+    create_yanktrove_folder: Option<bool>,
+) -> Result<(), String> {
+    let create_yanktrove = create_yanktrove_folder.unwrap_or(true);
     let dir = match custom_dir.filter(|path| !path.trim().is_empty()) {
         Some(path) => PathBuf::from(path),
-        None => app
-            .path()
-            .download_dir()
-            .map_err(|e| e.to_string())?
-            .join("YankTrove"),
+        None => {
+            let downloads = app.path().download_dir().map_err(|e| e.to_string())?;
+            if create_yanktrove {
+                downloads.join("YankTrove")
+            } else {
+                downloads
+            }
+        }
     };
 
     std::fs::create_dir_all(&dir)

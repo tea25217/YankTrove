@@ -402,6 +402,32 @@ pub fn spawn_yt_dlp(
         })
 }
 
+/// True when the video folder already has finished outputs (not .part / .ytdl / .temp).
+pub fn video_dir_has_existing_outputs(dir: &Path) -> bool {
+    let Ok(entries) = fs::read_dir(dir) else {
+        return false;
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if !path.is_file() {
+            continue;
+        }
+        let Some(name) = path.file_name().and_then(|n| n.to_str()) else {
+            continue;
+        };
+        let lower = name.to_ascii_lowercase();
+        if lower.ends_with(".part")
+            || lower.ends_with(".ytdl")
+            || lower.ends_with(".temp")
+            || lower.ends_with(".tmp")
+        {
+            continue;
+        }
+        return true;
+    }
+    false
+}
+
 /// Cleans up any incomplete download files matching the video_id in the target directory.
 /// Searches for files ending with .part, .temp, or containing the video_id that are incomplete.
 pub fn cleanup_incomplete_files(dir: &Path, video_id: &str) -> std::io::Result<()> {

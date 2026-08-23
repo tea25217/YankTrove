@@ -18,6 +18,8 @@ export interface DownloadOptions {
   audio_format: string;
   cookies_browser: string;
   csv: boolean;
+  create_yanktrove_folder: boolean;
+  overwrite_mode: 'overwrite' | 'skip' | 'ask';
 }
 
 export interface VideoInfo {

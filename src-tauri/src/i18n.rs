@@ -266,3 +266,32 @@ pub fn csv_write_failed_log(error: &str, locale: UiLocale) -> String {
         format!("Failed to save summary CSV: {error}")
     }
 }
+
+pub fn existing_files_skip_log(title: &str, locale: UiLocale) -> String {
+    if locale.is_ja() {
+        format!("既存ファイルがあるためスキップしました: {}", title)
+    } else {
+        format!("Skipped because files already exist: {title}")
+    }
+}
+
+pub fn overwrite_prompt_title(locale: UiLocale) -> &'static str {
+    if locale.is_ja() {
+        "既存ファイル"
+    } else {
+        "Existing files"
+    }
+}
+
+pub fn overwrite_prompt_message(title: &str, locale: UiLocale) -> String {
+    if locale.is_ja() {
+        format!(
+            "「{}」の保存先に既存ファイルがあります。\n上書きしますか？\n\n「いいえ」でスキップします。",
+            title
+        )
+    } else {
+        format!(
+            "Files already exist for “{title}”.\nOverwrite them?\n\nChoose No to skip."
+        )
+    }
+}

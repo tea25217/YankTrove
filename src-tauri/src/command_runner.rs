@@ -70,6 +70,26 @@ pub struct DownloadOptions {
     pub cookies_browser: String, // "chrome", "firefox", "edge", "safari", "none"
     #[serde(default)]
     pub csv: bool,
+    /// When true (default), save under `{base}/YankTrove/{channel}/...`.
+    #[serde(default = "default_true")]
+    pub create_yanktrove_folder: bool,
+    /// `overwrite` | `skip` | `ask` (default `skip`, matching former --no-overwrites).
+    #[serde(default = "default_overwrite_mode")]
+    pub overwrite_mode: String,
+}
+
+fn default_true() -> bool {
+    true
+}
+
+fn default_overwrite_mode() -> String {
+    "skip".to_string()
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum OverwriteAction {
+    Overwrite,
+    Skip,
 }
 
 #[derive(serde::Serialize, Clone, Debug)]
@@ -500,6 +520,7 @@ pub async fn download_single_video(
     output_dir: &Path,
     locale: UiLocale,
     prefetched_language: Option<String>,
+    force_overwrite: bool,
 ) -> Result<(), String> {
     // Save current video ID and target folder in AppState for cancellation cleanup
     {
@@ -515,8 +536,12 @@ pub async fn download_single_video(
         args.push(options.cookies_browser.clone());
     }
 
-    // Duplicate avoidance (No overwrites)
-    args.push("--no-overwrites".to_string());
+    // Existing-file policy
+    if force_overwrite {
+        args.push("--force-overwrites".to_string());
+    } else {
+        args.push("--no-overwrites".to_string());
+    }
 
     // Configure downloads
     if options.metadata {
