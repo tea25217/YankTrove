@@ -67,6 +67,10 @@ pub struct DownloadOptions {
     pub video: bool,
     pub audio: bool,
     pub audio_format: String, // "mp3" or "m4a"
+    /// Max video height: `best` | `2160` | `1440` | `1080` | `720` | `480` | `360`.
+    /// Audio stream stays `ba` / bestaudio regardless of this cap.
+    #[serde(default = "default_video_quality")]
+    pub video_quality: String,
     pub cookies_browser: String, // "chrome", "firefox", "edge", "safari", "none"
     #[serde(default)]
     pub csv: bool,
@@ -84,6 +88,22 @@ fn default_true() -> bool {
 
 fn default_overwrite_mode() -> String {
     "skip".to_string()
+}
+
+fn default_video_quality() -> String {
+    "best".to_string()
+}
+
+/// yt-dlp `-f` string: prefer MP4+M4A, cap height when requested, keep best audio.
+/// `height<=N` already falls back to the best available stream at or below N.
+pub fn video_format_selector(quality: &str) -> String {
+    match quality {
+        "2160" | "1440" | "1080" | "720" | "480" | "360" => format!(
+            "bv*[height<={q}][ext=mp4]+ba[ext=m4a]/bv*[height<={q}]+ba/b[height<={q}]",
+            q = quality
+        ),
+        _ => "bv*[ext=mp4]+ba[ext=m4a]/bv*+ba/b".to_string(),
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -592,9 +612,8 @@ pub async fn download_single_video(
 
     // Video / Audio formatting
     if options.video {
-        // High quality mp4
         args.push("-f".to_string());
-        args.push("bv*[ext=mp4]+ba[ext=m4a]/bv*+ba/b".to_string());
+        args.push(video_format_selector(&options.video_quality));
         args.push("--merge-output-format".to_string());
         args.push("mp4".to_string());
     } else if options.audio {
@@ -750,4 +769,29 @@ pub async fn download_single_video(
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::video_format_selector;
+
+    #[test]
+    fn best_quality_keeps_unbounded_selector() {
+        assert_eq!(
+            video_format_selector("best"),
+            "bv*[ext=mp4]+ba[ext=m4a]/bv*+ba/b"
+        );
+        assert_eq!(
+            video_format_selector("unknown"),
+            "bv*[ext=mp4]+ba[ext=m4a]/bv*+ba/b"
+        );
+    }
+
+    #[test]
+    fn height_cap_keeps_best_audio_and_falls_back() {
+        let s = video_format_selector("720");
+        assert!(s.contains("height<=720"));
+        assert!(s.contains("+ba[ext=m4a]") || s.contains("+ba/"));
+        assert!(!s.contains("ba[height"));
+    }
 }

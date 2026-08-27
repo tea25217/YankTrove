@@ -274,7 +274,8 @@ input[type="text"]:focus, select:focus {
 .audio-format-group select {
   padding: 4px 8px;
   font-size: 11px;
-  width: 70px;
+  min-width: 70px;
+  width: auto;
 }
 
 /* Right pane output and progress */

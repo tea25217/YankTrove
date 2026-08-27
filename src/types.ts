@@ -16,6 +16,7 @@ export interface DownloadOptions {
   video: boolean;
   audio: boolean;
   audio_format: string;
+  video_quality: string;
   cookies_browser: string;
   csv: boolean;
   create_yanktrove_folder: boolean;

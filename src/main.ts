@@ -103,6 +103,18 @@ document.addEventListener('DOMContentLoaded', async () => {
           <label class="checkbox-option">
             <input type="checkbox" id="opt-video" /> <span data-i18n="optVideo">${t('optVideo')}</span>
           </label>
+          <div id="video-quality-group" class="audio-format-group">
+            <label for="video-quality" data-i18n="videoQualityLabel">${t('videoQualityLabel')}</label>
+            <select id="video-quality">
+              <option value="best" data-i18n="videoQualityBest" selected>${t('videoQualityBest')}</option>
+              <option value="2160" data-i18n="videoQuality2160">${t('videoQuality2160')}</option>
+              <option value="1440" data-i18n="videoQuality1440">${t('videoQuality1440')}</option>
+              <option value="1080" data-i18n="videoQuality1080">${t('videoQuality1080')}</option>
+              <option value="720" data-i18n="videoQuality720">${t('videoQuality720')}</option>
+              <option value="480" data-i18n="videoQuality480">${t('videoQuality480')}</option>
+              <option value="360" data-i18n="videoQuality360">${t('videoQuality360')}</option>
+            </select>
+          </div>
           <label class="checkbox-option">
             <input type="checkbox" id="opt-audio" /> <span data-i18n="optAudio">${t('optAudio')}</span>
           </label>
@@ -206,6 +218,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   
   const optVideoCheckbox = document.getElementById('opt-video') as HTMLInputElement;
   const optAudioCheckbox = document.getElementById('opt-audio') as HTMLInputElement;
+  const videoQualityGroupEl = document.getElementById('video-quality-group') as HTMLDivElement;
+  const videoQualitySelect = document.getElementById('video-quality') as HTMLSelectElement;
   const ffmpegWarningEl = document.getElementById('ffmpeg-warning') as HTMLDivElement;
   const audioFormatGroupEl = document.getElementById('audio-format-group') as HTMLDivElement;
   const audioFormatSelect = document.getElementById('audio-format') as HTMLSelectElement;
@@ -354,6 +368,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const CREATE_YANKTROVE_KEY = 'yank-trove.create-yanktrove-folder';
   const OVERWRITE_MODE_KEY = 'yank-trove.overwrite-mode';
+  const VIDEO_QUALITY_KEY = 'yank-trove.video-quality';
+  const VIDEO_QUALITY_VALUES = ['best', '2160', '1440', '1080', '720', '480', '360'] as const;
 
   function readStoredBool(key: string, fallback: boolean): boolean {
     try {
@@ -397,6 +413,18 @@ document.addEventListener('DOMContentLoaded', async () => {
   } else {
     overwriteModeSelect.value = 'skip';
   }
+  const storedQuality = (() => {
+    try {
+      return localStorage.getItem(VIDEO_QUALITY_KEY);
+    } catch {
+      return null;
+    }
+  })();
+  if (storedQuality && (VIDEO_QUALITY_VALUES as readonly string[]).includes(storedQuality)) {
+    videoQualitySelect.value = storedQuality;
+  } else {
+    videoQualitySelect.value = 'best';
+  }
   updateSaveDirPlaceholder();
 
   createYankTroveCheckbox.addEventListener('change', () => {
@@ -405,6 +433,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
   overwriteModeSelect.addEventListener('change', () => {
     writeStored(OVERWRITE_MODE_KEY, overwriteModeSelect.value);
+  });
+  videoQualitySelect.addEventListener('change', () => {
+    writeStored(VIDEO_QUALITY_KEY, videoQualitySelect.value);
   });
 
   uiLocaleSelect.value = locale();
@@ -447,6 +478,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       audioFormatGroupEl.classList.add('visible');
     } else {
       audioFormatGroupEl.classList.remove('visible');
+    }
+
+    if (videoChecked) {
+      videoQualityGroupEl.classList.add('visible');
+    } else {
+      videoQualityGroupEl.classList.remove('visible');
     }
   }
 
@@ -797,6 +834,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       audio: (document.getElementById('opt-audio') as HTMLInputElement).checked,
       csv: (document.getElementById('opt-csv') as HTMLInputElement).checked,
       audio_format: audioFormatSelect.value,
+      video_quality: videoQualitySelect.value,
       cookies_browser: cookiesBrowserSelect.value,
       create_yanktrove_folder: createYankTroveCheckbox.checked,
       overwrite_mode: overwriteModeSelect.value as 'overwrite' | 'skip' | 'ask',
@@ -813,6 +851,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     channelUrlInput.disabled = true;
     createYankTroveCheckbox.disabled = true;
     overwriteModeSelect.disabled = true;
+    videoQualitySelect.disabled = true;
     filterTitleInput.disabled = true;
     filterDateFromInput.disabled = true;
     filterDateToInput.disabled = true;
@@ -892,6 +931,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     channelUrlInput.disabled = false;
     createYankTroveCheckbox.disabled = false;
     overwriteModeSelect.disabled = false;
+    videoQualitySelect.disabled = false;
     filterTitleInput.disabled = false;
     filterDateFromInput.disabled = false;
     filterDateToInput.disabled = false;
