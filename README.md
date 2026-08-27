@@ -1,236 +1,182 @@
 # Yank Trove
 
-Yank Trove は、YouTube 向けのデスクトップアプリケーションです。指定したチャンネルやプレイリストから、メンバー限定配信を含むアーカイブ動画のデータ（動画・音声・チャット・メタデータ・字幕・サムネイル等）をまとめて保存できます。
-
-本アプリは YouTube 公式 API を使わず、[yt-dlp](https://github.com/yt-dlp/yt-dlp) を通じて公開ページやストリーム情報を取得します。ブラウザのクッキーを使う場合は、ログイン中のアカウントとしてアクセスします。
-
-**利用は自己責任です。** YouTube の利用規約や法令に反する使い方、過度な連続取得、ログイン状態での取得などにより、IP 制限、機能制限、アカウント停止などの不利益が生じても、開発者は責任を負いません。取得してよいコンテンツかどうか（著作権・メンバーシップ契約を含む）も、利用者自身で判断してください。
-
-**対応 OS:** 動作確認済みは **Windows** です。macOS 向けのビルド手順・設定は用意していますが、開発者が Mac を所持していないため **動作未確認** です。Linux（`.deb` 等）は未対応です。
-
-**配布 ID:** `com.yanktrove.desktop`。以前の `com.yanktrove.app` から変更したため、OS 上では別アプリとして扱われます（既存インストールの上書き・設定引き継ぎはありません）。
-
-**表示言語:** 初回は OS が日本語なら日本語、それ以外は英語。ヘッダーで切り替えられ、選択は次回起動以降も維持されます。
-
-**設計判断:** 後から覆すとコストが大きい判断は [docs/adr](./docs/adr/) に記録しています。
-
+Yank Trove は、YouTube 向けのチE��クトップアプリケーションです。指定したチャンネルめE�Eレイリストから、メンバ�E限定�E信を含むアーカイブ動画のチE�Eタ�E�動画・音声・チャチE��・メタチE�Eタ・字幕�Eサムネイル等）をまとめて保存できます、E
+本アプリは YouTube 公弁EAPI を使わず、[yt-dlp](https://github.com/yt-dlp/yt-dlp) を通じて公開�EージめE��トリーム惁E��を取得します。ブラウザのクチE��ーを使ぁE��合�E、ログイン中のアカウントとしてアクセスします、E
+**利用は自己責任です、E* YouTube の利用規紁E��法令に反する使ぁE��、E��度な連続取得、ログイン状態での取得などにより、IP 制限、機�E制限、アカウント停止などの不利益が生じても、E��発老E�E責任を負ぁE��せん。取得してよいコンチE��チE��どぁE���E�著作権・メンバ�EシチE�E契紁E��含む�E�も、利用老E�E身で判断してください、E
+**対忁EOS:** 動作確認済みは **Windows** です。macOS 向けのビルド手頁E�E設定�E用意してぁE��すが、E��発老E�� Mac を所持してぁE��ぁE��めE**動作未確誁E* です、Einux�E�E.deb` 等）�E未対応です、E
+**配币EID:** `com.yanktrove.desktop`。以前�E `com.yanktrove.app` から変更したため、OS 上では別アプリとして扱われます（既存インスト�Eルの上書き�E設定引き継ぎはありません�E�、E
+**表示言誁E** 初回は OS が日本語なら日本語、それ以外�E英語。�EチE��ーで刁E��替えられ、E��択�E次回起動以降も維持されます、E
+**設計判断:** 後から要E��とコストが大きい判断は [docs/adr](./docs/adr/) に記録してぁE��す、E
 ---
 
-## 主な機能
+## 主な機�E
 
-- **一括データ取得**: メタデータ (JSON)、チャットログ (JSON)、概要欄 (.txt)、字幕 (.vtt)、サムネイル (.jpg)、動画本体 (MP4・画質選択可)、音声 (MP3 / M4A)、整形サマリ (CSV) を個別選択して保存
-- **メンバー限定配信対応**: ブラウザ（Chrome / Edge / Firefox / Safari）のクッキーを読み込んでメン限コンテンツを取得
-- **チャンネルタブ自動展開**: チャンネルトップ URL から Videos / Live / Shorts を展開し、個別動画を一覧表示
-- **オリジナル言語字幕**: 動画の原語（日本語配信なら日本語、英語配信なら英語）の字幕を優先取得。自動翻訳字幕は除外
-- **IPブロック回避（レートリミット対策）**: 連続ダウンロード時に任意の待機時間（秒）を設定可能
-- **中断・破棄機能**: ダウンロードをいつでもキャンセルでき、一時ファイル (`.part` / `.ytdl`) を自動クリーンアップ
-- **モダンデザイン**: 見やすいライトテーマ UI。ヘッダーで JS Runtime / FFmpeg の検出状態を表示
+- **一括チE�Eタ取征E*: メタチE�Eタ (JSON)、チャチE��ログ (JSON)、概要欁E(.txt)、字幁E(.vtt)、サムネイル (.jpg)、動画本佁E(MP4・画質選択可)、E��声 (MP3 / M4A)、整形サマリ (CSV) を個別選択して保孁E- **メンバ�E限定�E信対忁E*: ブラウザ�E�Ehrome / Edge / Firefox / Safari�E��EクチE��ーを読み込んでメン限コンチE��チE��取征E- **チャンネルタブ�E動展開**: チャンネルトッチEURL から Videos / Live / Shorts を展開し、個別動画を一覧表示
+- **オリジナル言語字幁E*: 動画の原語（日本語�E信なら日本語、英語�E信なら英語）�E字幕を優先取得。�E動翻訳字幕�E除夁E- **IPブロチE��回避�E�レートリミット対策！E*: 連続ダウンロード時に任意�E征E��時間（秒）を設定可能
+- **中断・破棁E���E**: ダウンロードをぁE��でもキャンセルでき、一時ファイル (`.part` / `.ytdl`) を�E動クリーンアチE�E
+- **モダンチE��イン**: 見やすいライトテーチEUI。�EチE��ーで JS Runtime / FFmpeg の検�E状態を表示
 
 ---
 
 
 
-## 必要な環境
+## 忁E��な環墁E
 
 
+### JS Runtime�E�Eeno�E� EYouTube 向けの取得に忁E��E
+YouTube 向けの取得�E琁E��Et-dlp�E�には JavaScript ランタイムが忁E��です、E
 
-### JS Runtime（Deno）— YouTube 向けの取得に必須
-
-YouTube 向けの取得処理（yt-dlp）には JavaScript ランタイムが必要です。
-
-
-| プラットフォーム                   | 対応                  |
+| プラチE��フォーム                   | 対忁E                 |
 | -------------------------- | ------------------- |
-| **Windows（インストーラー版）**      | Deno を同梱。追加インストール不要 |
-| **Windows（開発ビルド） / macOS** | 以下のいずれかを PATH に用意   |
+| **Windows�E�インスト�Eラー版！E*      | Deno を同梱。追加インスト�Eル不要E|
+| **Windows�E�開発ビルド！E/ macOS** | 以下�EぁE��れかめEPATH に用愁E  |
 
 
 
 
-#### 手動インストール（Windows / macOS 共通）
-
+#### 手動インスト�Eル�E�Eindows / macOS 共通！E
 ```cmd
 winget install DenoLand.Deno
 ```
 
-macOS の場合:
+macOS の場吁E
 
 ```bash
 brew install deno
 ```
 
-インストール後、アプリを再起動し、右上バッジが **「JS Runtime: Deno 検出済み」** になることを確認してください。
-
-参考: [yt-dlp EJS セットアップガイド](https://github.com/yt-dlp/yt-dlp/wiki/EJS)
+インスト�Eル後、アプリを�E起動し、右上バチE��ぁE**「JS Runtime: Deno 検�E済み、E* になることを確認してください、E
+参老E [yt-dlp EJS セチE��アチE�Eガイド](https://github.com/yt-dlp/yt-dlp/wiki/EJS)
 
 ---
 
 
 
-### FFmpeg — 動画・音声を保存するときだけ必要
+### FFmpeg  E動画・音声を保存するときだけ忁E��E
+**FFmpeg** は、動画ファイルの作�EめE��声の変換を行う無料�Eソフトです、Eank Trove 本体とは別に、PC に入れておく忁E��があります、E
 
-**FFmpeg** は、動画ファイルの作成や音声の変換を行う無料のソフトです。Yank Trove 本体とは別に、PC に入れておく必要があります。
-
-
-| 保存する内容                  | FFmpeg |
+| 保存する�E容                  | FFmpeg |
 | ----------------------- | ------ |
-| 動画（MP4）・音声（MP3 / M4A）   | **必要** |
-| 字幕・メタデータ・サムネイル・チャットログのみ | **不要** |
+| 動画�E�EP4�E��E音声�E�EP3 / M4A�E�E  | **忁E��E* |
+| 字幕�EメタチE�Eタ・サムネイル・チャチE��ログのみ | **不要E* |
 
 
-インストール後、Yank Trove を一度終了して再起動し、画面右上が **「FFmpeg: 検出済み」** になれば準備完了です。
+インスト�Eル後、Yank Trove を一度終亁E��て再起動し、画面右上が **「FFmpeg: 検�E済み、E* になれ�E準備完亁E��す、E
+#### Windows でのインスト�Eル
 
-#### Windows でのインストール
-
-1. キーボードの **Windows キー**（⊞）を押し、**「cmd」** と入力して **Enter** を押します。
-
-開いたウィンドウに、以下を**コピーして貼り付け**、**Enter** を押します。
-
+1. キーボ�Eド�E **Windows キー**�E�⊞�E�を押し、E*「cmd、E* と入力して **Enter** を押します、E
+開いたウィンドウに、以下を**コピ�Eして貼り付け**、E*Enter** を押します、E
 ```
  winget install Gyan.FFmpeg
 ```
 
-1. 「同意しますか？」などと表示されたら、**Y** キーを押して **Enter** を押します。
-2. 「インストールが完了しました」と表示されたら、ウィンドウは閉じてかまいません。
-3. **Yank Trove を一度終了し、もう一度起動** してください。右上が **「FFmpeg: 検出済み」** になれば成功です。
-
-うまくいかない場合は、PC を **再起動** してから、手順 5 をもう一度お試しください。
-
-#### macOS（動作未確認）
-
+1. 「同意しますか�E�」などと表示されたら、E*Y** キーを押して **Enter** を押します、E2. 「インスト�Eルが完亁E��ました」と表示されたら、ウィンドウは閉じてかまぁE��せん、E3. **Yank Trove を一度終亁E��、もぁE��度起勁E* してください。右上が **「FFmpeg: 検�E済み、E* になれ�E成功です、E
+ぁE��くいかなぁE��合�E、PC めE**再起勁E* してから、手頁E5 をもぁE��度お試しください、E
+#### macOS�E�動作未確認！E
 ```bash
 brew install ffmpeg
 ```
 
-インストール後、右上バッジが **「FFmpeg: 検出済み」** になることを確認してください。  
-※ macOS は開発環境での動作確認ができていません。問題があれば Issue で報告してください。
-
+インスト�Eル後、右上バチE��ぁE**「FFmpeg: 検�E済み、E* になることを確認してください、E 
+※ macOS は開発環墁E��の動作確認ができてぁE��せん。問題があれば Issue で報告してください、E
 ---
 
 
 
-## 使い方ガイド
-
-1. **アプリを起動**: Yank Trove を起動します。
-2. **チャンネル URL の入力**:
-  - 例（チャンネル全体）: `https://www.youtube.com/@ChannelName`
-  - 例（Live アーカイブのみ）: `https://www.youtube.com/@ChannelName/streams`
-  - プレイリスト URL も利用可能です。
-3. **クッキーの選択（メン限を取得する場合）**:
-  - メンバーシップ加入済みアカウントで YouTube にログインしたブラウザを選択します。
-  - **Firefox を推奨**します。Windows の Chrome / Edge は Cookie をアプリ専用に暗号化するため、Yank Trove から読めないことがあります（[yt-dlp#10927](https://github.com/yt-dlp/yt-dlp/issues/10927)）。
-4. **保存先フォルダ**: デフォルトは `ダウンロード/YankTrove/{チャンネル名}/{投稿日時}_{タイトル}/`（投稿日時は UTC の `YYYYMMDD-hhmm`）。「選択」ボタンで変更可能。`YankTrove` フォルダの作成有無はチェックで切り替えられる。
-5. **既存ファイル**: 「上書き」「スキップ」「毎回選択」から選べる（既定はスキップ）。
-6. **取得データの選択**: 保存したい項目にチェックを入れます。動画本体を選んだときは画質（最高〜360p）を一括指定でき、その解像度が無い動画はそれ以下の最良に落ちます（音質は下げません）。
-7. **動画リストを取得**: 右ペインに動画一覧が表示されます（件数が多い場合は時間がかかります）。タイトル・配信日・公開／メンバー限定で絞り込めます（リスト取得時点の情報を使用。プラン別の区別は未対応）。
-8. **取得開始**: 対象動画を選択し「取得開始」をクリックします。
+## 使ぁE��ガイチE
+1. **アプリを起勁E*: Yank Trove を起動します、E2. **チャンネル URL の入劁E*:
+  - 例（チャンネル全体！E `https://www.youtube.com/@ChannelName`
+  - 例！Eive アーカイブ�Eみ�E�E `https://www.youtube.com/@ChannelName/streams`
+  - プレイリスチEURL も利用可能です、E3. **クチE��ーの選択（メン限を取得する場合！E*:
+  - メンバ�EシチE�E加入済みアカウントで YouTube にログインしたブラウザを選択します、E  - **Firefox を推奨**します。Windows の Chrome / Edge は Cookie をアプリ専用に暗号化するため、Yank Trove から読めなぁE��とがあります！Eyt-dlp#10927](https://github.com/yt-dlp/yt-dlp/issues/10927)�E�、E4. **保存�Eフォルダ**: チE��ォルト�E `ダウンローチEYankTrove/{チャンネル名}/{投稿日晁E_{タイトル}/`�E�投稿日時�E UTC の `YYYYMMDD-hhmm`�E�。「選択」�Eタンで変更可能。`YankTrove` フォルダの作�E有無はチェチE��で刁E��替えられる、E5. **既存ファイル**: 「上書き」「スキチE�E」「毎回選択」から選べる（既定�EスキチE�E�E�、E6. **取得データの選抁E*: 保存したい頁E��にチェチE��を�Eれます。動画本体を選んだとき�E画質�E�最高、E60p�E�を一括持E��でき、その解像度が無ぁE��画はそれ以下�E最良に落ちます（音質は下げません�E�、E7. **動画リストを取征E*: 右ペインに動画一覧が表示されます（件数が多い場合�E時間がかかります）。タイトル・配信日・公開／メンバ�E限定で絞り込めます（リスト取得時点の惁E��を使用。�Eラン別の区別は未対応）、E8. **取得開姁E*: 対象動画を選択し「取得開始」をクリチE��します、E
 
 
-
-### 保存ファイル名の例
-
+### 保存ファイル名�E侁E
 ```
 YankTrove/{チャンネル名}/{YYYYMMDD-hhmm}_{タイトル}/
   ├── {タイトル} [{動画ID}].info.json
-  ├── {タイトル} [{動画ID}].ja-orig.vtt   ← 日本語配信の字幕
-  ├── {タイトル} [{動画ID}].mp4
+  ├── {タイトル} [{動画ID}].ja-orig.vtt   ↁE日本語�E信の字幁E  ├── {タイトル} [{動画ID}].mp4
   └── ...
-YankTrove/{チャンネル名}/summary.csv   ← 取得データ選択の「整形データ (CSV)」
-```
+YankTrove/{チャンネル名}/summary.csv   ↁE取得データ選択�E「整形チE�Eタ (CSV)、E```
 
 ---
 
 
 
-## 既知の不具合
+## 既知の不�E吁E
 
 
+### Chrome / Edge クチE��ー読み取り失敗！Eindows�E�E
+「使用するブラウザのクチE��ー」で Google Chrome また�E Microsoft Edge を選択すると、クチE��ー読み取りに失敗することがあります。原因は次の2系統があります、E
+- **App-Bound Encryption�E�多い�E�E*: `Failed to decrypt with DPAPI`、Eyt-dlp#10927](https://github.com/yt-dlp/yt-dlp/issues/10927)。ブラウザを終亁E��ても直りません
+- **起動中の DB ロチE��**: `Could not copy ... cookie database`、Eyt-dlp#7271](https://github.com/yt-dlp/yt-dlp/issues/7271)
 
-### Chrome / Edge クッキー読み取り失敗（Windows）
+失敗時は処琁E��グとエラー本斁E�� **yt-dlp の原文** を残します、Eirefox の使用を推奨します、E
+**暫定回避筁E*
 
-「使用するブラウザのクッキー」で Google Chrome または Microsoft Edge を選択すると、クッキー読み取りに失敗することがあります。原因は次の2系統があります。
-
-- **App-Bound Encryption（多い）**: `Failed to decrypt with DPAPI`。[yt-dlp#10927](https://github.com/yt-dlp/yt-dlp/issues/10927)。ブラウザを終了しても直りません
-- **起動中の DB ロック**: `Could not copy ... cookie database`。[yt-dlp#7271](https://github.com/yt-dlp/yt-dlp/issues/7271)
-
-失敗時は処理ログとエラー本文に **yt-dlp の原文** を残します。Firefox の使用を推奨します。
-
-**暫定回避策**
-
-- **Firefox を使用する** — クッキー取得元を Firefox に切り替える（DPAPI 失敗時の実質的な対処）
-- **Chrome / Edge を完全終了してから再試行する** — `Could not copy` のロックが原因の場合のみ有効です
-
+- **Firefox を使用する**  EクチE��ー取得�EめEFirefox に刁E��替える�E�EPAPI 失敗時の実質皁E��対処�E�E- **Chrome / Edge を完�E終亁E��てから再試行すめE*  E`Could not copy` のロチE��が原因の場合�Eみ有効でぁE
 ---
 
 
 
-## トラブルシューティング
+## トラブルシューチE��ング
 
 
-| 症状                                   | 対処                                        |
+| 痁E��                                   | 対処                                        |
 | ------------------------------------ | ----------------------------------------- |
-| リスト取得失敗（Chrome クッキー / DPAPI）         | Firefox に切り替える。Chrome 終了では直らない（[yt-dlp#10927](https://github.com/yt-dlp/yt-dlp/issues/10927)） |
-| `n challenge solving failed`         | Deno（または Node.js 22+）をインストールして再起動         |
-| チャンネル URL で Videos/Live/Shorts の3件のみ | 正常動作です。Live のみ欲しい場合は `/streams` URL を直接入力 |
-| 字幕が英語（翻訳）になる                         | v0.2.0 以降は原語字幕を優先。再取得してください               |
-| 動画や音声が保存できない / 右上が「FFmpeg: 未検出」      | 上記「FFmpeg」の手順でインストールし、Yank Trove を再起動     |
+| リスト取得失敗！Ehrome クチE��ー / DPAPI�E�E        | Firefox に刁E��替える、Ehrome 終亁E��は直らなぁE��Eyt-dlp#10927](https://github.com/yt-dlp/yt-dlp/issues/10927)�E�E|
+| `n challenge solving failed`         | Deno�E�また�E Node.js 22+�E�をインスト�Eルして再起勁E        |
+| チャンネル URL で Videos/Live/Shorts の3件のみ | 正常動作です、Eive のみ欲しい場合�E `/streams` URL を直接入劁E|
+| 字幕が英語（翻訳�E�になめE                        | v0.2.0 以降�E原語字幕を優先。�E取得してください               |
+| 動画めE��声が保存できなぁE/ 右上が「FFmpeg: 未検�E、E     | 上記「FFmpeg」�E手頁E��インスト�Eルし、Yank Trove を�E起勁E    |
 
 
 ---
 
 
 
-## ビルドとインストーラー生成
+## ビルドとインスト�Eラー生�E
 
 ```bash
-# 依存関係のインストール
+# 依存関係�Eインスト�Eル
 npm install
 
-# 開発モード起動
-npm run tauri dev
+# 開発モード起勁Enpm run tauri dev
 
-# 生産用パッケージ（.exe / .msi / .dmg 等）の生成
+# 生産用パッケージ�E�Eexe / .msi / .dmg 等）�E生�E
 npm run tauri build
 ```
 
-生成物出力先: `src-tauri/target/release/bundle/`
+生�E物出力�E: `src-tauri/target/release/bundle/`
 
-### バージョン番号
+### バ�Eジョン番号
 
-当面は `0.x` のままです（1.0 には上げません）。破壊的変更もメジャーではなくマイナーを上げます。
+当面は `0.x` のままです！E.0 には上げません�E�。破壊的変更もメジャーではなく�Eイナ�Eを上げます、E
+- **マイナ�E**�E�E0.x.0`�E�E 機�E追加、およ�E破壊的変更
+- **パッチE*�E�E0.0.x`�E�E 些細な変更
 
-- **マイナー**（`0.x.0`）: 機能追加、および破壊的変更
-- **パッチ**（`0.0.x`）: 些細な変更
-
-### GitHub Actions によるリリース（Windows / macOS）
-
-`v*` タグを push すると、[Release workflow](./.github/workflows/release.yml) が Windows（NSIS / MSI）と macOS（Apple Silicon / Intel の `.dmg`）をビルドし、GitHub Release に添付します。
-
+### GitHub Actions によるリリース�E�Eindows / macOS�E�E
+`v*` タグめEpush すると、[Release workflow](./.github/workflows/release.yml) ぁEWindows�E�ESIS / MSI�E�と macOS�E�Epple Silicon / Intel の `.dmg`�E�をビルドし、GitHub Release に添付します、E
 ```bash
-# バージョンを上げたうえで:
-git tag v0.9.0
-git push origin v0.9.0
+# バ�Eジョンを上げたうえで:
+git tag v0.10.0
+git push origin v0.10.0
 ```
 
-手動実行は Actions タブの **Release** → **Run workflow** からも可能です。macOS 成果物は動作未確認です。
+手動実行�E Actions タブ�E **Release** ↁE**Run workflow** からも可能です。macOS 成果物は動作未確認です、E
+### 同梱バイナリ�E�開発老E��け！E
+`yt-dlp` と Deno の実行ファイルは Git に含めてぁE��せん�E�EitHub のファイルサイズ制限�Eため�E�、E 
+配置方法�E [src-tauri/binaries/README.md](./src-tauri/binaries/README.md) を参照してください、EI では `.github/scripts/download-sidecars.sh` が�E動取得します、E
+### シークレチE�� / 個人惁E��スキャン
 
-### 同梱バイナリ（開発者向け）
-
-`yt-dlp` と Deno の実行ファイルは Git に含めていません（GitHub のファイルサイズ制限のため）。  
-配置方法は [src-tauri/binaries/README.md](./src-tauri/binaries/README.md) を参照してください。CI では `.github/scripts/download-sidecars.sh` が自動取得します。
-
-### シークレット / 個人情報スキャン
-
-`push` と pull request で [Betterleaks](https://github.com/betterleaks/betterleaks) が走り、API キー・秘密鍵・設定ファイル内のメール／電話番号などを検知すると失敗します。
-
-ローカルの `git commit` / `git push` でも止める場合（初回のみ）:
+`push` と pull request で [Betterleaks](https://github.com/betterleaks/betterleaks) が走り、API キー・秘寁E��・設定ファイル冁E�Eメール�E�電話番号などを検知すると失敗します、E
+ローカルの `git commit` / `git push` でも止める場合（�E回�Eみ�E�E
 
 ```powershell
 powershell -File scripts/install-git-hooks.ps1
 ```
 
-フルルールで見るには [Betterleaks](https://github.com/betterleaks/betterleaks) を PATH に入れてください。未導入でも、秘密鍵や GitHub トークンなど確度の高いパターンは hook 側のフォールバックで拒否します。
-
+フルルールで見るには [Betterleaks](https://github.com/betterleaks/betterleaks) めEPATH に入れてください。未導�Eでも、秘寁E��めEGitHub ト�Eクンなど確度の高いパターンは hook 側のフォールバックで拒否します、E
 ---
 
 
@@ -238,5 +184,5 @@ powershell -File scripts/install-git-hooks.ps1
 ## ライセンス
 
 - 本アプリケーション: [LICENSE](./LICENSE)
-- 第三者ソフトウェア: [THIRD_PARTY_LICENSES.md](./THIRD_PARTY_LICENSES.md)
+- 第三老E��フトウェア: [THIRD_PARTY_LICENSES.md](./THIRD_PARTY_LICENSES.md)
 
