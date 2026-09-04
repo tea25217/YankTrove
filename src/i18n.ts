@@ -41,6 +41,10 @@ const ja = {
     '⚠️ 動画の保存、または音声の抽出には <strong>FFmpeg</strong> が必要です。未検出の場合は処理が失敗するか画質が制限される場合があります。',
   audioFormat: '形式:',
   delayLabel: '連続取得時の待機時間 (秒) - IPブロック対策',
+  shutdownAfterComplete: '完了後に PC をシャットダウンする',
+  shutdownScheduledLog:
+    '取得完了のため、{seconds} 秒後にシャットダウンします（キャンセルは OS のシャットダウン中止で可能）。',
+  shutdownScheduleFailed: 'シャットダウンの予約に失敗しました: {error}',
   fetchList: '動画リストを取得',
   fetchingList: 'リスト取得中...',
   queueTitle: '動画キュー',
@@ -158,6 +162,10 @@ const en: { [K in keyof typeof ja]: string } = {
     '⚠️ Saving video or extracting audio requires <strong>FFmpeg</strong>. Without it, the job may fail or quality may be limited.',
   audioFormat: 'Format:',
   delayLabel: 'Delay between downloads (seconds) — rate-limit protection',
+  shutdownAfterComplete: 'Shut down the PC when finished',
+  shutdownScheduledLog:
+    'All done — shutting down in {seconds} seconds (cancel via the OS shutdown abort if needed).',
+  shutdownScheduleFailed: 'Failed to schedule shutdown: {error}',
   fetchList: 'Fetch video list',
   fetchingList: 'Fetching list...',
   queueTitle: 'Video queue',

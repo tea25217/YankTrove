@@ -19,6 +19,8 @@ use crate::command_runner::{
 };
 use tauri_plugin_dialog::{DialogExt, MessageDialogButtons};
 
+const SHUTDOWN_DELAY_SECONDS: u64 = 60;
+
 #[derive(serde::Serialize)]
 struct EnvStatus {
     ffmpeg_installed: bool,
@@ -287,6 +289,91 @@ async fn cancel_downloads(state: tauri::State<'_, AppState>) -> Result<(), Strin
 }
 
 #[tauri::command]
+fn schedule_system_shutdown(locale: String) -> Result<(), String> {
+    let ui_locale = UiLocale::parse(&locale);
+    let message = crate::i18n::shutdown_scheduled_message(SHUTDOWN_DELAY_SECONDS, ui_locale);
+    schedule_os_shutdown(SHUTDOWN_DELAY_SECONDS, &message)
+}
+
+#[tauri::command]
+fn abort_system_shutdown() -> Result<(), String> {
+    abort_os_shutdown()
+}
+
+fn schedule_os_shutdown(delay_seconds: u64, message: &str) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("shutdown")
+            .args([
+                "/s",
+                "/t",
+                &delay_seconds.to_string(),
+                "/c",
+                message,
+            ])
+            .spawn()
+            .map(|_| ())
+            .map_err(|e| format!("Failed to schedule shutdown: {e}"))
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        let _ = message;
+        // `shutdown -h +N` uses minutes; for sub-minute delays use sleep + halt via osascript.
+        let script = format!(
+            "delay {delay_seconds}\ntell application \"System Events\" to shut down"
+        );
+        std::process::Command::new("osascript")
+            .args(["-e", &script])
+            .spawn()
+            .map(|_| ())
+            .map_err(|e| format!("Failed to schedule shutdown: {e}"))
+    }
+
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+    {
+        let _ = message;
+        let minutes = delay_seconds.div_ceil(60).max(1);
+        std::process::Command::new("shutdown")
+            .args(["-h", &format!("+{minutes}")])
+            .spawn()
+            .map(|_| ())
+            .map_err(|e| format!("Failed to schedule shutdown: {e}"))
+    }
+}
+
+fn abort_os_shutdown() -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    {
+        let status = std::process::Command::new("shutdown")
+            .arg("/a")
+            .status()
+            .map_err(|e| format!("Failed to abort shutdown: {e}"))?;
+        if status.success() {
+            Ok(())
+        } else {
+            // No pending shutdown is not fatal for the UI.
+            Ok(())
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        // Best-effort: kill pending osascript shut down helpers started by us.
+        let _ = std::process::Command::new("pkill")
+            .args(["-f", "tell application \"System Events\" to shut down"])
+            .status();
+        Ok(())
+    }
+
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+    {
+        let _ = std::process::Command::new("shutdown").arg("-c").status();
+        Ok(())
+    }
+}
+
+#[tauri::command]
 fn open_save_folder(
     app: tauri::AppHandle,
     custom_dir: Option<String>,
@@ -346,7 +433,9 @@ pub fn run() {
             get_channel_videos,
             start_download_archive,
             cancel_downloads,
-            open_save_folder
+            open_save_folder,
+            schedule_system_shutdown,
+            abort_system_shutdown
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

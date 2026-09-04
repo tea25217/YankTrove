@@ -295,3 +295,13 @@ pub fn overwrite_prompt_message(title: &str, locale: UiLocale) -> String {
         )
     }
 }
+
+pub fn shutdown_scheduled_message(delay_seconds: u64, locale: UiLocale) -> String {
+    if locale.is_ja() {
+        format!(
+            "Yank Trove の取得が完了したため、{delay_seconds} 秒後にシャットダウンします。"
+        )
+    } else {
+        format!("Yank Trove finished downloads; shutting down in {delay_seconds} seconds.")
+    }
+}

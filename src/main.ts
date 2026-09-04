@@ -136,6 +136,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         <div class="form-group">
           <label for="delay-seconds" data-i18n="delayLabel">${t('delayLabel')}</label>
           <input type="number" id="delay-seconds" min="0" max="60" value="5" style="padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-color); outline: none;" />
+          <label class="checkbox-option" style="margin-top: 8px;">
+            <input type="checkbox" id="opt-shutdown-after" />
+            <span data-i18n="shutdownAfterComplete">${t('shutdownAfterComplete')}</span>
+          </label>
         </div>
       </div>
       
@@ -224,6 +228,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const audioFormatGroupEl = document.getElementById('audio-format-group') as HTMLDivElement;
   const audioFormatSelect = document.getElementById('audio-format') as HTMLSelectElement;
   const delaySecondsInput = document.getElementById('delay-seconds') as HTMLInputElement;
+  const shutdownAfterCheckbox = document.getElementById('opt-shutdown-after') as HTMLInputElement;
   
   const videoListEl = document.getElementById('video-list') as HTMLDivElement;
   const channelTitleDisplay = document.getElementById('channel-title-display') as HTMLSpanElement;
@@ -369,7 +374,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   const CREATE_YANKTROVE_KEY = 'yank-trove.create-yanktrove-folder';
   const OVERWRITE_MODE_KEY = 'yank-trove.overwrite-mode';
   const VIDEO_QUALITY_KEY = 'yank-trove.video-quality';
+  const SHUTDOWN_AFTER_KEY = 'yank-trove.shutdown-after-complete';
   const VIDEO_QUALITY_VALUES = ['best', '2160', '1440', '1080', '720', '480', '360'] as const;
+  const SHUTDOWN_DELAY_SECONDS = 60;
 
   function readStoredBool(key: string, fallback: boolean): boolean {
     try {
@@ -436,6 +443,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
   videoQualitySelect.addEventListener('change', () => {
     writeStored(VIDEO_QUALITY_KEY, videoQualitySelect.value);
+  });
+
+  shutdownAfterCheckbox.checked = readStoredBool(SHUTDOWN_AFTER_KEY, false);
+  shutdownAfterCheckbox.addEventListener('change', () => {
+    writeStored(SHUTDOWN_AFTER_KEY, String(shutdownAfterCheckbox.checked));
   });
 
   uiLocaleSelect.value = locale();
@@ -852,6 +864,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     createYankTroveCheckbox.disabled = true;
     overwriteModeSelect.disabled = true;
     videoQualitySelect.disabled = true;
+    shutdownAfterCheckbox.disabled = true;
     filterTitleInput.disabled = true;
     filterDateFromInput.disabled = true;
     filterDateToInput.disabled = true;
@@ -891,6 +904,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       addLog(t('allDone'));
       consolePhase = 'done';
       consoleStatusEl.textContent = t('statusDone');
+      if (shutdownAfterCheckbox.checked) {
+        try {
+          await invoke('schedule_system_shutdown', { locale: locale() });
+          addLog(t('shutdownScheduledLog', { seconds: SHUTDOWN_DELAY_SECONDS }));
+        } catch (shutdownErr) {
+          addLog(t('shutdownScheduleFailed', { error: String(shutdownErr) }), true);
+        }
+      }
     } catch (err) {
       if (err === 'Cancelled') {
         addLog(t('downloadCancelled'), true);
@@ -932,6 +953,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     createYankTroveCheckbox.disabled = false;
     overwriteModeSelect.disabled = false;
     videoQualitySelect.disabled = false;
+    shutdownAfterCheckbox.disabled = false;
     filterTitleInput.disabled = false;
     filterDateFromInput.disabled = false;
     filterDateToInput.disabled = false;
