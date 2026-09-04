@@ -5,9 +5,26 @@
 
 CI（`.github/workflows/release.yml`）では `.github/scripts/download-sidecars.sh` が自動取得します。
 
-## 必要なファイル
+## インストール時の配置
 
-Tauri の `externalBin` は、ターゲット三重項付きのファイル名を参照します。
+インストーラーでは次のレイアウトになります（exe と同じ階層にユーザー向け文書、ツールは `bin/`）。
+
+```
+Yank Trove.exe
+README.txt
+LICENSE
+bin/
+  yt-dlp.exe   (macOS: yt-dlp)
+  deno.exe     (macOS: deno)
+licenses/
+  THIRD_PARTY_LICENSES.md
+```
+
+ビルド前に `download-sidecars.sh`（または `build.rs`）が `src-tauri/resources/bin/` へ上記の短い名前でコピーし、`tauri.conf.json` の `bundle.resources` が `bin/` にマップします。
+
+## 開発用ファイル（三重項付き）
+
+ローカル参照・`build.rs` のコピー元として、三重項付きの名前も `binaries/` に置きます。
 
 | ファイル名 | 用途 |
 |-----------|------|
@@ -22,8 +39,6 @@ Tauri の `externalBin` は、ターゲット三重項付きのファイル名�
 
 - yt-dlp: https://github.com/yt-dlp/yt-dlp/releases
 - Deno: https://github.com/denoland/deno/releases
-
-配置後、ファイル名を上表どおりにリネームしてください。
 
 ローカルで CI と同じ取得をする場合:
 

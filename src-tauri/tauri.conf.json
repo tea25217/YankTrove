@@ -40,12 +40,9 @@
     "resources": {
       "../README.txt": "README.txt",
       "../LICENSE": "LICENSE",
-      "../THIRD_PARTY_LICENSES.md": "THIRD_PARTY_LICENSES.md"
+      "../THIRD_PARTY_LICENSES.md": "licenses/THIRD_PARTY_LICENSES.md",
+      "resources/bin/*": "bin/"
     },
-    "externalBin": [
-      "binaries/yt-dlp",
-      "binaries/deno"
-    ],
     "windows": {
       "nsis": {
         "installerHooks": "./windows/nsis-hooks.nsh"

@@ -1,44 +1,74 @@
 fn main() {
     tauri_build::build();
-    copy_deno_runtime_alias();
+    sync_resources_bin_from_binaries();
 }
 
-/// Copies the platform Deno sidecar binary to `deno.exe` beside the build output
-/// so yt-dlp can auto-detect it when `--js-runtimes` path resolution is unavailable.
-fn copy_deno_runtime_alias() {
-    let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR not set");
-    let profile = std::env::var("PROFILE").unwrap_or_else(|_| "debug".to_string());
-    let target_dir = std::path::Path::new(&manifest_dir)
-        .join("target")
-        .join(&profile);
-
-    let Some(src_name) = deno_sidecar_filename() else {
+/// Copies platform Deno/yt-dlp from `binaries/` into `resources/bin/` so local
+/// builds match the install layout (`$INSTDIR/bin/`) without requiring a full
+/// CI download when triple-named files are already present.
+fn sync_resources_bin_from_binaries() {
+    let Some((yt_src, deno_src, yt_dest_name, deno_dest_name)) = platform_sidecar_names() else {
         return;
     };
 
-    let src = std::path::Path::new(&manifest_dir)
-        .join("binaries")
-        .join(src_name);
-    if !src.exists() {
+    let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR not set");
+    let binaries = std::path::Path::new(&manifest_dir).join("binaries");
+    let res_bin = std::path::Path::new(&manifest_dir).join("resources").join("bin");
+    if std::fs::create_dir_all(&res_bin).is_err() {
         return;
     }
 
-    if std::fs::create_dir_all(&target_dir).is_err() {
-        return;
+    let yt_src_path = binaries.join(yt_src);
+    let deno_src_path = binaries.join(deno_src);
+    if yt_src_path.exists() {
+        let dest = res_bin.join(yt_dest_name);
+        if let Err(error) = std::fs::copy(&yt_src_path, &dest) {
+            println!("cargo:warning=Failed to copy yt-dlp into resources/bin: {error}");
+        }
     }
-
-    let dest = target_dir.join("deno.exe");
-    if let Err(error) = std::fs::copy(&src, &dest) {
-        println!("cargo:warning=Failed to copy Deno runtime alias to target dir: {error}");
+    if deno_src_path.exists() {
+        let dest = res_bin.join(deno_dest_name);
+        if let Err(error) = std::fs::copy(&deno_src_path, &dest) {
+            println!("cargo:warning=Failed to copy Deno into resources/bin: {error}");
+        }
     }
 }
 
 #[cfg(all(target_os = "windows", target_arch = "x86_64"))]
-fn deno_sidecar_filename() -> Option<&'static str> {
-    Some("deno-x86_64-pc-windows-msvc.exe")
+fn platform_sidecar_names() -> Option<(&'static str, &'static str, &'static str, &'static str)> {
+    Some((
+        "yt-dlp-x86_64-pc-windows-msvc.exe",
+        "deno-x86_64-pc-windows-msvc.exe",
+        "yt-dlp.exe",
+        "deno.exe",
+    ))
 }
 
-#[cfg(not(all(target_os = "windows", target_arch = "x86_64")))]
-fn deno_sidecar_filename() -> Option<&'static str> {
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+fn platform_sidecar_names() -> Option<(&'static str, &'static str, &'static str, &'static str)> {
+    Some((
+        "yt-dlp-aarch64-apple-darwin",
+        "deno-aarch64-apple-darwin",
+        "yt-dlp",
+        "deno",
+    ))
+}
+
+#[cfg(all(target_os = "macos", target_arch = "x86_64"))]
+fn platform_sidecar_names() -> Option<(&'static str, &'static str, &'static str, &'static str)> {
+    Some((
+        "yt-dlp-x86_64-apple-darwin",
+        "deno-x86_64-apple-darwin",
+        "yt-dlp",
+        "deno",
+    ))
+}
+
+#[cfg(not(any(
+    all(target_os = "windows", target_arch = "x86_64"),
+    all(target_os = "macos", target_arch = "aarch64"),
+    all(target_os = "macos", target_arch = "x86_64"),
+)))]
+fn platform_sidecar_names() -> Option<(&'static str, &'static str, &'static str, &'static str)> {
     None
 }

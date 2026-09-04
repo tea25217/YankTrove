@@ -23,6 +23,7 @@ Yank Trove は、YouTube 向けのデスクトップアプリケーションで�
 - **チャンネルタブ自動展開**: チャンネルトップ URL から Videos / Live / Shorts を展開し、個別動画を一覧表示
 - **オリジナル言語字幕**: 動画の原語（日本語配信なら日本語、英語配信なら英語）の字幕を優先取得。自動翻訳字幕は除外
 - **IPブロック回避（レートリミット対策）**: 連続ダウンロード時に任意の待機時間（秒）を設定可能
+- **完了後シャットダウン**: 取得完了後に PC をシャットダウンするオプション（既定オフ、60 秒後）
 - **中断・破棄機能**: ダウンロードをいつでもキャンセルでき、一時ファイル (`.part` / `.ytdl`) を自動クリーンアップ
 - **モダンデザイン**: 見やすいライトテーマ UI。ヘッダーで JS Runtime / FFmpeg の検出状態を表示
 
@@ -208,13 +209,24 @@ npm run tauri build
 
 ```bash
 # バージョンを上げたうえで:
-git tag v0.10.0
-git push origin v0.10.0
+git tag v0.11.0
+git push origin v0.11.0
 ```
 
 手動実行は Actions タブの **Release** → **Run workflow** からも可能です。macOS 成果物は動作未確認です。
 
+### インストール後のフォルダ構成
+
+```
+Yank Trove.exe
+README.txt
+LICENSE
+bin/          … yt-dlp / Deno
+licenses/     … THIRD_PARTY_LICENSES.md
+```
+
 ### 同梱バイナリ（開発者向け）
+
 
 `yt-dlp` と Deno の実行ファイルは Git に含めていません（GitHub のファイルサイズ制限のため）。  
 配置方法は [src-tauri/binaries/README.md](./src-tauri/binaries/README.md) を参照してください。CI では `.github/scripts/download-sidecars.sh` が自動取得します。

@@ -11,6 +11,8 @@ src-tauri/gen/
 # Sidecar binaries (exceed GitHub file size limits; see src-tauri/binaries/README.md)
 src-tauri/binaries/*
 !src-tauri/binaries/README.md
+src-tauri/resources/bin/*
+!src-tauri/resources/bin/.gitkeep
 
 # Environment and secrets
 .env

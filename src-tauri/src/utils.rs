@@ -1,5 +1,6 @@
 use std::path::{Path, PathBuf};
 use std::fs;
+use tauri::Manager;
 use tauri_plugin_shell::ShellExt;
 
 const WINDOWS_RESERVED_NAMES: &[&str] = &[
@@ -222,11 +223,7 @@ pub fn is_js_challenge_error(message: &str) -> bool {
 }
 
 fn find_js_runtime(app: &tauri::AppHandle) -> Option<(String, PathBuf)> {
-    if let Some(path) = find_sidecar_executable(app, "deno") {
-        return Some(("deno".to_string(), path));
-    }
-
-    if let Some(path) = find_sidecar_sibling(app, "yt-dlp", "deno.exe") {
+    if let Some(path) = find_bundled_tool(app, "deno") {
         return Some(("deno".to_string(), path));
     }
 
@@ -241,24 +238,34 @@ fn find_js_runtime(app: &tauri::AppHandle) -> Option<(String, PathBuf)> {
     None
 }
 
-fn find_sidecar_executable(app: &tauri::AppHandle, name: &str) -> Option<PathBuf> {
-    if app.shell().sidecar(name).is_err() {
-        return None;
-    }
-    find_runtime_candidate_next_to_app(name)
-}
+/// Search dirs: `{exe|resource}/bin`, then `{exe|resource}` (legacy flat layout).
+fn tool_search_dirs(app: &tauri::AppHandle) -> Vec<PathBuf> {
+    let mut dirs = Vec::new();
 
-fn find_runtime_candidate_next_to_app(name: &str) -> Option<PathBuf> {
-    let exe = std::env::current_exe().ok()?;
-    let dir = exe.parent()?;
-
-    for candidate in sidecar_filename_candidates(name) {
-        let path = dir.join(candidate);
-        if path.exists() {
-            return Some(path);
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(parent) = exe.parent() {
+            dirs.push(parent.join("bin"));
+            dirs.push(parent.to_path_buf());
         }
     }
 
+    if let Ok(resource_dir) = app.path().resource_dir() {
+        dirs.push(resource_dir.join("bin"));
+        dirs.push(resource_dir);
+    }
+
+    dirs
+}
+
+fn find_bundled_tool(app: &tauri::AppHandle, name: &str) -> Option<PathBuf> {
+    for dir in tool_search_dirs(app) {
+        for candidate in sidecar_filename_candidates(name) {
+            let path = dir.join(&candidate);
+            if path.is_file() {
+                return Some(path);
+            }
+        }
+    }
     None
 }
 
@@ -266,8 +273,8 @@ fn sidecar_filename_candidates(name: &str) -> Vec<String> {
     #[cfg(all(target_os = "windows", target_arch = "x86_64"))]
     {
         return vec![
-            format!("{name}-x86_64-pc-windows-msvc.exe"),
             format!("{name}.exe"),
+            format!("{name}-x86_64-pc-windows-msvc.exe"),
             name.to_string(),
         ];
     }
@@ -275,8 +282,8 @@ fn sidecar_filename_candidates(name: &str) -> Vec<String> {
     #[cfg(all(target_os = "windows", target_arch = "aarch64"))]
     {
         return vec![
-            format!("{name}-aarch64-pc-windows-msvc.exe"),
             format!("{name}.exe"),
+            format!("{name}-aarch64-pc-windows-msvc.exe"),
             name.to_string(),
         ];
     }
@@ -284,36 +291,22 @@ fn sidecar_filename_candidates(name: &str) -> Vec<String> {
     #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
     {
         return vec![
-            format!("{name}-aarch64-apple-darwin"),
             name.to_string(),
+            format!("{name}-aarch64-apple-darwin"),
         ];
     }
 
     #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
     {
         return vec![
-            format!("{name}-x86_64-apple-darwin"),
             name.to_string(),
+            format!("{name}-x86_64-apple-darwin"),
         ];
     }
 
     #[cfg(not(any(windows, target_os = "macos")))]
     {
         vec![name.to_string()]
-    }
-}
-
-fn find_sidecar_sibling(
-    app: &tauri::AppHandle,
-    sidecar_name: &str,
-    sibling_name: &str,
-) -> Option<PathBuf> {
-    let sidecar_path = find_sidecar_executable(app, sidecar_name)?;
-    let sibling = sidecar_path.parent()?.join(sibling_name);
-    if sibling.exists() {
-        Some(sibling)
-    } else {
-        None
     }
 }
 
@@ -365,7 +358,7 @@ fn js_runtime_args(app: &tauri::AppHandle) -> Vec<String> {
 }
 
 /// Spawns the yt-dlp command.
-/// Attempts to use the bundled sidecar first, and falls back to the system 'yt-dlp'.
+/// Prefers the bundled tool under `bin/`, then falls back to system `yt-dlp`.
 pub fn spawn_yt_dlp(
     app: &tauri::AppHandle,
     args: Vec<String>,
@@ -379,27 +372,26 @@ pub fn spawn_yt_dlp(
     let mut full_args = js_runtime_args(app);
     full_args.extend(args);
 
-    // 1. Try sidecar
-    if let Ok(sidecar_cmd) = app.shell().sidecar("yt-dlp") {
-        let sidecar_cmd = sidecar_cmd.args(&full_args);
-        match sidecar_cmd.spawn() {
+    if let Some(path) = find_bundled_tool(app, "yt-dlp") {
+        let path_str = path.to_string_lossy().to_string();
+        match app.shell().command(&path_str).args(&full_args).spawn() {
             Ok(res) => return Ok(res),
             Err(e) => {
-                println!("Failed to spawn yt-dlp sidecar: {}. Trying system fallback...", e);
+                println!(
+                    "Failed to spawn bundled yt-dlp at {}: {}. Trying system fallback...",
+                    path_str, e
+                );
             }
         }
     }
 
-    // 2. Try system fallback
     let system_cmd = app.shell().command("yt-dlp").args(full_args);
-    system_cmd
-        .spawn()
-        .map_err(|e| {
-            format!(
-                "Failed to spawn yt-dlp. Make sure yt-dlp is installed and in your system PATH.\nError: {}",
-                e
-            )
-        })
+    system_cmd.spawn().map_err(|e| {
+        format!(
+            "Failed to spawn yt-dlp. Make sure yt-dlp is installed and in your system PATH.\nError: {}",
+            e
+        )
+    })
 }
 
 /// True when the video folder already has finished outputs (not .part / .ytdl / .temp).
