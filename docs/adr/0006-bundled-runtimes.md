@@ -10,9 +10,9 @@ yt-dlp は YouTube 取得に必須。近年は JS ランタイム（Deno）も�
 
 ## Decision
 
-- インストーラーに **yt-dlp** と **Deno** を同梱する。配置は exe 直下ではなく **`bin/`**（`bundle.resources`）。第三者ライセンスは **`licenses/`**。
-- **FFmpeg は同梱しない**。動画・音声保存時のみ、利用者が PATH または別途配置した FFmpeg を使う。
-- 開発時の配置手順は `src-tauri/binaries/README.md`。CI は `.github/scripts/download-sidecars.sh`（`resources/bin/` へもコピー）。
+- インストーラーに **yt-dlp** と **Deno** を同梱する。配置はアプリ本体直下ではなく **`bin/`**（`bundle.resources`）。第三者ライセンスは **`licenses/`**。Windows / macOS / Linux（`.deb`）で同じ方針。
+- **FFmpeg は同梱しない**（`.deb` の Depends にも入れない）。動画・音声保存時のみ、利用者が PATH または別途配置した FFmpeg を使う。
+- 開発時の配置手順は `src-tauri/binaries/README.md`。CI は `.github/scripts/download-sidecars.sh`（`resources/bin/` へもコピー。Linux x86_64 含む）。
 
 ## Consequences
 
