@@ -304,7 +304,23 @@ fn sidecar_filename_candidates(name: &str) -> Vec<String> {
         ];
     }
 
-    #[cfg(not(any(windows, target_os = "macos")))]
+    #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+    {
+        return vec![
+            name.to_string(),
+            format!("{name}-x86_64-unknown-linux-gnu"),
+        ];
+    }
+
+    #[cfg(all(target_os = "linux", target_arch = "aarch64"))]
+    {
+        return vec![
+            name.to_string(),
+            format!("{name}-aarch64-unknown-linux-gnu"),
+        ];
+    }
+
+    #[cfg(not(any(windows, target_os = "macos", target_os = "linux")))]
     {
         vec![name.to_string()]
     }

@@ -140,17 +140,23 @@ fn truncate_ytdlp_detail(detail: &str) -> String {
 pub fn js_runtime_setup_message(locale: UiLocale) -> String {
     if locale.is_ja() {
         "YouTube 取得には JavaScript ランタイム（Deno 推奨）が必要です。\n\n\
-        以下のいずれかで Deno をインストールしてください:\n\
-        1. winget install DenoLand.Deno\n\
-        2. https://docs.deno.com/runtime/getting_started/installation/\n\n\
+        インストーラー版（Windows / Linux .deb）には Deno を同梱しています。\n\
+        手動インストールする場合の例:\n\
+        - Windows: winget install DenoLand.Deno\n\
+        - macOS: brew install deno\n\
+        - Linux: curl -fsSL https://deno.land/install.sh | sh\n\
+        - 共通: https://docs.deno.com/runtime/getting_started/installation/\n\n\
         インストール後、アプリを再起動してください。\n\
         参考: https://github.com/yt-dlp/yt-dlp/wiki/EJS"
             .to_string()
     } else {
         "Fetching from YouTube requires a JavaScript runtime (Deno recommended).\n\n\
-        Install Deno with one of:\n\
-        1. winget install DenoLand.Deno\n\
-        2. https://docs.deno.com/runtime/getting_started/installation/\n\n\
+        Installer builds (Windows / Linux .deb) already bundle Deno.\n\
+        Manual install examples:\n\
+        - Windows: winget install DenoLand.Deno\n\
+        - macOS: brew install deno\n\
+        - Linux: curl -fsSL https://deno.land/install.sh | sh\n\
+        - Docs: https://docs.deno.com/runtime/getting_started/installation/\n\n\
         Restart the app after installing.\n\
         See: https://github.com/yt-dlp/yt-dlp/wiki/EJS"
             .to_string()

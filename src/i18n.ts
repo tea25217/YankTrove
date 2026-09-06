@@ -80,7 +80,7 @@ const ja = {
   jsRuntimeMissing: 'JS Runtime: 未検出',
   jsRuntimeFoundLog: '{name} の検出に成功しました。',
   jsRuntimeMissingLog:
-    'JavaScript ランタイム（Deno 推奨）が検出されませんでした。YouTube 取得が失敗する可能性があります。`winget install DenoLand.Deno` でインストールできます。',
+    'JavaScript ランタイム（Deno 推奨）が検出されませんでした。YouTube 取得が失敗する可能性があります。Windows: `winget install DenoLand.Deno` / macOS: `brew install deno` / Linux: https://docs.deno.com/runtime/getting_started/installation/',
   ffmpegChecking: 'FFmpeg: 検証中...',
   ffmpegFound: 'FFmpeg: 検出済み',
   ffmpegMissing: 'FFmpeg: 未検出',
@@ -201,7 +201,7 @@ const en: { [K in keyof typeof ja]: string } = {
   jsRuntimeMissing: 'JS Runtime: not found',
   jsRuntimeFoundLog: 'Detected {name}.',
   jsRuntimeMissingLog:
-    'No JavaScript runtime (Deno recommended) was found. YouTube fetches may fail. Install with `winget install DenoLand.Deno`.',
+    'No JavaScript runtime (Deno recommended) was found. YouTube fetches may fail. Windows: `winget install DenoLand.Deno` / macOS: `brew install deno` / Linux: https://docs.deno.com/runtime/getting_started/installation/',
   ffmpegChecking: 'FFmpeg: checking...',
   ffmpegFound: 'FFmpeg: found',
   ffmpegMissing: 'FFmpeg: not found',
