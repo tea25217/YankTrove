@@ -238,20 +238,59 @@ fn find_js_runtime(app: &tauri::AppHandle) -> Option<(String, PathBuf)> {
     None
 }
 
-/// Search dirs: `{exe|resource}/bin`, then `{exe|resource}` (legacy flat layout).
+/// Search dirs for bundled yt-dlp / Deno.
+///
+/// Linux `.deb` installs the binary to `/usr/bin/<bin>` and resources to
+/// `/usr/lib/<productName>/` (note the product name, e.g. `Yank Trove`).
+/// Tauri's `resource_dir()` often resolves `/usr/lib/<package_name>` instead,
+/// so we also probe `../lib/<productName>` next to the executable.
 fn tool_search_dirs(app: &tauri::AppHandle) -> Vec<PathBuf> {
     let mut dirs = Vec::new();
+    let mut lib_names: Vec<String> = Vec::new();
+    if let Some(product_name) = app.config().product_name.clone() {
+        lib_names.push(product_name);
+    }
+    lib_names.push(app.package_info().name.clone());
+    // Hard-coded fallback matching tauri.conf.json productName / Linux .deb layout.
+    if !lib_names.iter().any(|n| n == "Yank Trove") {
+        lib_names.push("Yank Trove".to_string());
+    }
+    if !lib_names.iter().any(|n| n == "yank-trove") {
+        lib_names.push("yank-trove".to_string());
+    }
+
+    let mut push_dir = |path: PathBuf| {
+        if !dirs.iter().any(|existing| existing == &path) {
+            dirs.push(path);
+        }
+    };
 
     if let Ok(exe) = std::env::current_exe() {
         if let Some(parent) = exe.parent() {
-            dirs.push(parent.join("bin"));
-            dirs.push(parent.to_path_buf());
+            push_dir(parent.join("bin"));
+            push_dir(parent.to_path_buf());
+
+            for lib_name in &lib_names {
+                let lib_root = parent.join("..").join("lib").join(lib_name);
+                push_dir(lib_root.join("bin"));
+                push_dir(lib_root.clone());
+                if let Ok(canonical) = lib_root.canonicalize() {
+                    push_dir(canonical.join("bin"));
+                    push_dir(canonical);
+                }
+            }
         }
     }
 
     if let Ok(resource_dir) = app.path().resource_dir() {
-        dirs.push(resource_dir.join("bin"));
-        dirs.push(resource_dir);
+        push_dir(resource_dir.join("bin"));
+        push_dir(resource_dir.clone());
+        if let Some(parent) = resource_dir.parent() {
+            for lib_name in &lib_names {
+                push_dir(parent.join(lib_name).join("bin"));
+                push_dir(parent.join(lib_name));
+            }
+        }
     }
 
     dirs
@@ -373,6 +412,20 @@ fn js_runtime_args(app: &tauri::AppHandle) -> Vec<String> {
         .unwrap_or_default()
 }
 
+fn yt_dlp_supports_js_runtimes(program: &str) -> bool {
+    let output = std::process::Command::new(program)
+        .arg("--help")
+        .output();
+    match output {
+        Ok(out) => {
+            let text = String::from_utf8_lossy(&out.stdout).to_ascii_lowercase()
+                + &String::from_utf8_lossy(&out.stderr).to_ascii_lowercase();
+            text.contains("--js-runtimes") || text.contains("js-runtimes")
+        }
+        Err(_) => false,
+    }
+}
+
 /// Spawns the yt-dlp command.
 /// Prefers the bundled tool under `bin/`, then falls back to system `yt-dlp`.
 pub fn spawn_yt_dlp(
@@ -385,11 +438,10 @@ pub fn spawn_yt_dlp(
     ),
     String,
 > {
-    let mut full_args = js_runtime_args(app);
-    full_args.extend(args);
-
     if let Some(path) = find_bundled_tool(app, "yt-dlp") {
         let path_str = path.to_string_lossy().to_string();
+        let mut full_args = js_runtime_args(app);
+        full_args.extend(args.clone());
         match app.shell().command(&path_str).args(&full_args).spawn() {
             Ok(res) => return Ok(res),
             Err(e) => {
@@ -400,6 +452,13 @@ pub fn spawn_yt_dlp(
             }
         }
     }
+
+    // System yt-dlp on older distros (e.g. apt) may not support --js-runtimes.
+    let mut full_args = Vec::new();
+    if yt_dlp_supports_js_runtimes("yt-dlp") {
+        full_args.extend(js_runtime_args(app));
+    }
+    full_args.extend(args);
 
     let system_cmd = app.shell().command("yt-dlp").args(full_args);
     system_cmd.spawn().map_err(|e| {
