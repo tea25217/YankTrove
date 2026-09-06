@@ -6,7 +6,7 @@ Yank Trove は、YouTube 向けのデスクトップアプリケーションで�
 
 **利用は自己責任です。** YouTube の利用規約や法令に反する使い方、過度な連続取得、ログイン状態での取得などにより、IP 制限、機能制限、アカウント停止などの不利益が生じても、開発者は責任を負いません。取得してよいコンテンツかどうか（著作権・メンバーシップ契約を含む）も、利用者自身で判断してください。
 
-**対応 OS:** 動作確認済みは **Windows** です。macOS 向けのビルド手順・設定は用意していますが、開発者が Mac を所持していないため **動作未確認** です。Linux（`.deb` 等）は未対応です。
+**対応 OS:** 動作確認済みは **Windows** です。macOS 向けの `.dmg` と Linux x86_64 向けの `.deb` は CI で配布しますが、開発環境での **継続的な実機確認は限定的** です（macOS は未確認）。
 
 **配布 ID:** `com.yanktrove.desktop`。以前の `com.yanktrove.app` から変更したため、OS 上では別アプリとして扱われます（既存インストールの上書き・設定引き継ぎはありません）。
 
@@ -40,24 +40,35 @@ Yank Trove は、YouTube 向けのデスクトップアプリケーションで�
 YouTube 向けの取得処理（yt-dlp）には JavaScript ランタイムが必要です。
 
 
-| プラットフォーム                   | 対応                  |
-| -------------------------- | ------------------- |
-| **Windows（インストーラー版）**      | Deno を同梱。追加インストール不要 |
-| **Windows（開発ビルド） / macOS** | 以下のいずれかを PATH に用意   |
+| プラットフォーム | 対応 |
+| --- | --- |
+| **Windows（インストーラー版）** | Deno を同梱。追加インストール不要 |
+| **Linux（`.deb`）** | Deno を同梱。追加インストール不要 |
+| **Windows（開発ビルド） / macOS / ソースビルド** | 以下のいずれかを PATH に用意 |
 
 
 
 
-#### 手動インストール（Windows / macOS 共通）
+#### 手動インストール
+
+Windows:
 
 ```cmd
 winget install DenoLand.Deno
 ```
 
-macOS の場合:
+macOS:
 
 ```bash
 brew install deno
+```
+
+Linux（`.deb` 以外 / 開発ビルド）:
+
+```bash
+curl -fsSL https://deno.land/install.sh | sh
+# または配布ページの手順:
+# https://docs.deno.com/runtime/getting_started/installation/
 ```
 
 インストール後、アプリを再起動し、右上バッジが **「JS Runtime: Deno 検出済み」** になることを確認してください。
@@ -105,6 +116,19 @@ brew install ffmpeg
 
 インストール後、右上バッジが **「FFmpeg: 検出済み」** になることを確認してください。  
 ※ macOS は開発環境での動作確認ができていません。問題があれば Issue で報告してください。
+
+#### Linux（`.deb` / Ubuntu・Debian 系）
+
+`.deb` には yt-dlp と Deno を同梱します。FFmpeg は同梱せず Depends にも入れません（動画・音声を保存するときだけ必要）。
+
+```bash
+sudo apt update
+sudo apt install ffmpeg
+```
+
+インストール後、Yank Trove を再起動し、右上が **「FFmpeg: 検出済み」** になることを確認してください。
+
+`.deb` のランタイム依存（WebKitGTK 等）はパッケージの Depends で入ります。Ubuntu 22.04 / Debian 12 相当を想定しています。
 
 ---
 
@@ -203,22 +227,22 @@ npm run tauri build
 - **マイナー**（`0.x.0`）: 機能追加、および破壊的変更
 - **パッチ**（`0.0.x`）: 些細な変更
 
-### GitHub Actions によるリリース（Windows / macOS）
+### GitHub Actions によるリリース（Windows / macOS / Linux）
 
-`v*` タグを push すると、[Release workflow](./.github/workflows/release.yml) が Windows（NSIS / MSI）と macOS（Apple Silicon / Intel の `.dmg`）をビルドし、GitHub Release に添付します。
+`v*` タグを push すると、[Release workflow](./.github/workflows/release.yml) が Windows（NSIS / MSI）、macOS（Apple Silicon / Intel の `.dmg`）、Linux x86_64（`.deb`）をビルドし、GitHub Release に添付します。
 
 ```bash
 # バージョンを上げたうえで:
-git tag v0.11.0
-git push origin v0.11.0
+git tag v0.12.0
+git push origin v0.12.0
 ```
 
-手動実行は Actions タブの **Release** → **Run workflow** からも可能です。macOS 成果物は動作未確認です。
+手動実行は Actions タブの **Release** → **Run workflow** からも可能です。macOS / Linux 成果物の実機確認は限定的です。
 
 ### インストール後のフォルダ構成
 
 ```
-Yank Trove.exe
+Yank Trove(.exe)
 README.txt
 LICENSE
 bin/          … yt-dlp / Deno

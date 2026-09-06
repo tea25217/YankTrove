@@ -23,8 +23,8 @@ Yank Trove は、YouTube 向けのデスクトップアプリケーションで�
 
 【対応 OS】
 動作確認済みは Windows です。
-macOS 向けの手順は記載していますが、開発者が Mac を所持して
-いないため動作未確認です。Linux は未対応です。
+macOS の .dmg と Linux x86_64 の .deb は CI で配布しますが、
+実機での継続確認は限定的です（macOS は未確認）。
 
 【配布 ID】
 com.yanktrove.desktop（以前の com.yanktrove.app から変更）。
@@ -58,6 +58,14 @@ Windows インストーラー版: Deno 同梱（追加作業不要）
   5. 右上が「FFmpeg: 検出済み」になれば完了
 
   うまくいかない場合は、PC を再起動してから 4〜5 を再試行。
+
+【Linux（.deb）】
+.deb には yt-dlp と Deno を同梱します。
+動画・音声を保存するときだけ FFmpeg が必要です:
+  sudo apt update
+  sudo apt install ffmpeg
+インストール後、Yank Trove を再起動し右上が「FFmpeg: 検出済み」になること。
+Ubuntu 22.04 / Debian 12 相当を想定しています。
 
 
 ------------------------------------------------------------------------
