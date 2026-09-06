@@ -240,10 +240,12 @@ fn find_js_runtime(app: &tauri::AppHandle) -> Option<(String, PathBuf)> {
 
 /// Search dirs for bundled yt-dlp / Deno.
 ///
-/// Linux `.deb` installs the binary to `/usr/bin/<bin>` and resources to
-/// `/usr/lib/<productName>/` (note the product name, e.g. `Yank Trove`).
-/// Tauri's `resource_dir()` often resolves `/usr/lib/<package_name>` instead,
-/// so we also probe `../lib/<productName>` next to the executable.
+/// Only `…/bin` directories are considered. Never search the executable's own
+/// directory: on Linux `.deb` that is `/usr/bin`, which often contains an older
+/// distro `yt-dlp` that must not be treated as the bundled tool.
+///
+/// Linux `.deb` layout: binary in `/usr/bin/<bin>`, tools in
+/// `/usr/lib/<productName>/bin/` (product name may contain spaces).
 fn tool_search_dirs(app: &tauri::AppHandle) -> Vec<PathBuf> {
     let mut dirs = Vec::new();
     let mut lib_names: Vec<String> = Vec::new();
@@ -267,15 +269,13 @@ fn tool_search_dirs(app: &tauri::AppHandle) -> Vec<PathBuf> {
 
     if let Ok(exe) = std::env::current_exe() {
         if let Some(parent) = exe.parent() {
+            // Windows/macOS installers: tools live in `<appDir>/bin`.
             push_dir(parent.join("bin"));
-            push_dir(parent.to_path_buf());
 
             for lib_name in &lib_names {
-                let lib_root = parent.join("..").join("lib").join(lib_name);
-                push_dir(lib_root.join("bin"));
-                push_dir(lib_root.clone());
-                if let Ok(canonical) = lib_root.canonicalize() {
-                    push_dir(canonical.join("bin"));
+                let lib_bin = parent.join("..").join("lib").join(lib_name).join("bin");
+                push_dir(lib_bin.clone());
+                if let Ok(canonical) = lib_bin.canonicalize() {
                     push_dir(canonical);
                 }
             }
@@ -284,11 +284,9 @@ fn tool_search_dirs(app: &tauri::AppHandle) -> Vec<PathBuf> {
 
     if let Ok(resource_dir) = app.path().resource_dir() {
         push_dir(resource_dir.join("bin"));
-        push_dir(resource_dir.clone());
         if let Some(parent) = resource_dir.parent() {
             for lib_name in &lib_names {
                 push_dir(parent.join(lib_name).join("bin"));
-                push_dir(parent.join(lib_name));
             }
         }
     }
@@ -301,6 +299,7 @@ fn find_bundled_tool(app: &tauri::AppHandle, name: &str) -> Option<PathBuf> {
         for candidate in sidecar_filename_candidates(name) {
             let path = dir.join(&candidate);
             if path.is_file() {
+                eprintln!("Using bundled {}: {}", name, path.display());
                 return Some(path);
             }
         }
@@ -454,6 +453,7 @@ pub fn spawn_yt_dlp(
     }
 
     // System yt-dlp on older distros (e.g. apt) may not support --js-runtimes.
+    eprintln!("Bundled yt-dlp not found or failed to spawn; falling back to system yt-dlp");
     let mut full_args = Vec::new();
     if yt_dlp_supports_js_runtimes("yt-dlp") {
         full_args.extend(js_runtime_args(app));
