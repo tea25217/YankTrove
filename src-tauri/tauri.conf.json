@@ -47,6 +47,14 @@
       "nsis": {
         "installerHooks": "./windows/nsis-hooks.nsh"
       }
+    },
+    "linux": {
+      "deb": {
+        "depends": [
+          "libwebkit2gtk-4.1-0",
+          "libgtk-3-0"
+        ]
+      }
     }
   }
 }
